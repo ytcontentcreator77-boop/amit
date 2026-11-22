@@ -48,7 +48,7 @@ admin.use("*", async (c, next) => {
   const uid = c.get("user").id;
   const settings = c.get("settings");
   if (isOwner(c.env, settings, uid)) return next();
-  const path = new URL(c.req.url).pathname.replace(/^\\/api\\/admin/, "") || "/";
+  const path = new URL(c.req.url).pathname.replace(/^\/api\/admin/, "") || "/";
   if (path.startsWith("/staff")) return err(c, 403, "OWNER_ONLY");
   const permission = staffPermissionFor(c.req.method, path);
   if (!permission) return err(c, 403, "FORBIDDEN");
