@@ -114,7 +114,7 @@ export function AdminBackup(){
  };
  const choose=async(e:Event)=>{
   const input=e.currentTarget as HTMLInputElement;const picked=input.files?.[0];if(!picked){F(null);N("");return}
-  N(picked.name);try{const parsed=JSON.parse(await picked.text()) as BackupFile;if(parsed.format!=="hero-bot-backup"||parsed.version!==1||!parsed.tables||!["full","key-catalog","users"].includes(parsed.scope))throw new Error("Invalid backup");F(parsed);toast("Backup file ready to import","ok")}catch{F(null);toast("Invalid backup JSON file","error")}
+  N(picked.name);try{let source: string;if(picked.name.toLowerCase().endsWith(".gz")){if(typeof DecompressionStream==="undefined")throw new Error("GZIP_IMPORT_UNSUPPORTED");const stream=new Blob([await picked.arrayBuffer()]).stream().pipeThrough(new DecompressionStream("gzip"));source=await new Response(stream).text()}else source=await picked.text();const parsed=JSON.parse(source) as BackupFile;if(parsed.format!=="hero-bot-backup"||parsed.version!==1||!parsed.tables||!["full","key-catalog","users"].includes(parsed.scope))throw new Error("Invalid backup");F(parsed);toast("Backup file ready to import","ok")}catch(e){F(null);toast(e instanceof Error?e.message:"Invalid backup file","error")}
  };
  const importNow=async()=>{
   if(!file)return;
@@ -127,10 +127,10 @@ export function AdminBackup(){
   <Section header="Export backup">
    <label>Backup type<select value={scope} onChange={e=>S((e.target as HTMLSelectElement).value as BackupScope)}><option value="full">Full database · all data</option><option value="key-catalog">Key categories & platforms only</option><option value="users">Users only</option></select></label>
    <Notice tone="info">{scope==="full"?"Includes users, balances, orders, keys and stock, products, categories, platforms, payment records, settings and provider configuration.":scope==="key-catalog"?"Includes only key-store categories and platforms. Does not include products, plans or stock.":"Exports only user profiles and account fields."}</Notice>
-   <button class="admin-extra-primary" disabled={busy} onClick={()=>void exportNow()}>{busy?"Preparing…":"Export "+label}</button>\n   <button disabled={busy} onClick={()=>{B(true);void call("/admin/backup/send","POST",{scope}).then(r=>toast("Backup sent to "+r.sent+" admin chat(s) · "+r.records+" records","ok")).catch(e=>toast(e instanceof Error?e.message:"Could not send backup to admin","error")).finally(()=>B(false))}}>Send backup file to admin Telegram</button>
+   <button class="admin-extra-primary" disabled={busy} onClick={()=>void exportNow()}>{busy?"Preparing…":"Export "+label}</button>\n   <button disabled={busy} onClick={()=>{B(true);void call("/admin/backup/send","POST",{scope}).then(r=>toast("Backup sent to "+r.sent+" admin chat(s) · "+r.records+" records"+(r.compressed?" · compressed":""),"ok")).catch(e=>{const d=(e as any)?.details;const info=Array.isArray(d?.failures)?d.failures.join(" | "):d?.hint||d?.message||"";toast((e instanceof Error?e.message:"Could not send backup to admin")+(info?": "+info:""),"error")}).finally(()=>B(false))}}>{busy?"Sending backup…":"Send backup file to admin Telegram"}</button>
   </Section>
   <Section header="Import / restore">
-   <label>Choose backup JSON file<input id="admin-backup-file" type="file" accept=".json,application/json" onChange={e=>void choose(e)}/></label>
+   <label>Choose backup JSON file<input id="admin-backup-file" type="file" accept=".json,.gz,application/json,application/gzip" onChange={e=>void choose(e)}/></label>
    {file?<div class="admin-extra-card"><b>{fileName}</b><small>Type: {file.scope} · {Object.keys(file.tables).length} tables · {Object.values(file.tables).reduce((n,v)=>n+(Array.isArray(v)?v.length:0),0)} records</small><small>Created: {file.exportedAt??"Unknown date"}</small><button disabled={busy} onClick={()=>void importNow()}>{busy?"Importing…":"Import this backup"}</button></div>:<p>Select a valid backup file exported by this bot.</p>}
    <Notice tone="warn">Full backups contain private data, including API keys and payment credentials. Store files securely. A full restore overwrites the current database; export a fresh backup first.</Notice>
   </Section>
