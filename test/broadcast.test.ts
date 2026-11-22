@@ -3,6 +3,7 @@ import {
   activeSeconds,
   applyPatch,
   BROADCAST_BATCH,
+  TAGS,
   broadcastBusy,
   type BroadcastState,
   buildKeyboard,
@@ -122,6 +123,15 @@ describe("personalize", () => {
 
   it("does not expand a {name} that is in the name itself", () => {
     expect(personalize("{name}", [], "{name}").text).toBe("{name}");
+  });
+  it("registers referral and expanded customer broadcast variables", () => {
+    for (const key of ["referrals","refferuser1","refferuser2","yourallrefeers","referral_count","referral_user1","referral_user2","all_referrals","referral_rewarded","referral_pending","first_name","last_name","user_id","wallet_balance","total_orders","total_keys","joined_days","today","year"]) {
+      expect(TAGS[key as keyof typeof TAGS]).toBe(`{${key}}`);
+    }
+    const r = personalize("You invited {referrals}: {refferuser1}, {refferuser2}. All: {yourallrefeers}", [], {
+      referrals:"3",refferuser1:"Asha",refferuser2:"Ravi",yourallrefeers:"Asha, Ravi, Mina",
+    });
+    expect(r.text).toBe("You invited 3: Asha, Ravi. All: Asha, Ravi, Mina");
   });
 });
 
