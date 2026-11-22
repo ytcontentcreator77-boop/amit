@@ -517,9 +517,8 @@ app.post("/keys/buy",async(c)=>{
    const safe=(v:string)=>v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
    const keyboard:any[][]=[[{text:"👁 Show Key",callback_data:`key:show:${ins.id}`}],[{text:"📋 Copy Key",copy_text:{text:fullKey}}]];
    if(product.setup_file_url)keyboard.push([{text:"📥 Download Setup",url:product.setup_file_url}]);
-   const platformVideo=await c.env.DB.prepare("SELECT id,setup_video_file_id,setup_video_url FROM key_platforms WHERE slug=?1 COLLATE NOCASE AND enabled=1").bind(product.platform??"").first<any>();
    const botUsername=String(c.get("settings").bot_username||"").replace(/^@/,"");
-   if(platformVideo&&(platformVideo.setup_video_file_id||platformVideo.setup_video_url)&&botUsername)keyboard.push([{text:"🎬 Setup Video",url:"https://t.me/"+botUsername+"?start=video"+platformVideo.id}]);
+   if(botUsername)keyboard.push([{text:"🎬 Setup Video",url:"https://t.me/"+botUsername+"?start=video"+product.id}]);
    const deliveryText=botText(c.get("lang"),"keyDeliveredMasked",{product:safe(product.name),plan:safe(plan.duration),id:String(ins.id),masked_key:safe(masked),amount:price.toFixed(2),balance:Number(deducted.balance_inr).toFixed(2)});
    await tg(c.env.BOT_TOKEN,"sendMessage",{chat_id:uid,text:deliveryText,parse_mode:"HTML",reply_markup:{inline_keyboard:keyboard}}).catch(e=>console.warn("key delivery chat message failed",(e as Error).message));
    if(product.setup_file_id) await tg(c.env.BOT_TOKEN,"sendDocument",{chat_id:uid,document:product.setup_file_id,caption:`📥 Setup file for ${product.name}`}).catch(e=>console.warn("setup file delivery failed",(e as Error).message));
