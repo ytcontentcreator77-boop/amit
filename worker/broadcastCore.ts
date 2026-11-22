@@ -14,9 +14,16 @@ export const CAPTION_LIMIT = 1024;
 /** How long the bot waits for the admin's message or button line */
 export const AWAIT_SECONDS = 15 * 60;
 export const TAGS = Object.freeze({
-  name: "{name}", username: "{username}", balance: "{balance}", totalkeys: "{totalkeys}",
-  key_1: "{key_1}", key_2: "{key_2}", key_3: "{key_3}", product: "{product}",
-  expiry: "{expiry}", joined: "{joined}", orders: "{orders}", brand: "{brand}", support: "{support}",
+  name: "{name}", first_name: "{first_name}", last_name: "{last_name}", username: "{username}",
+  user_id: "{user_id}", id: "{id}", balance: "{balance}", wallet_balance: "{wallet_balance}",
+  totalkeys: "{totalkeys}", total_keys: "{total_keys}", orders: "{orders}", total_orders: "{total_orders}",
+  key_1: "{key_1}", key_2: "{key_2}", key_3: "{key_3}", product: "{product}", expiry: "{expiry}",
+  joined: "{joined}", joined_days: "{joined_days}", brand: "{brand}", support: "{support}",
+  referrals: "{referrals}", refferuser1: "{refferuser1}", refferuser2: "{refferuser2}",
+  yourallrefeers: "{yourallrefeers}", referral_count: "{referral_count}",
+  referral_user1: "{referral_user1}", referral_user2: "{referral_user2}", all_referrals: "{all_referrals}",
+  referral_rewarded: "{referral_rewarded}", referral_pending: "{referral_pending}",
+  today: "{today}", year: "{year}",
 });
 export const NAME_TAG = TAGS.name;
 
