@@ -3,9 +3,8 @@ import type { LinkNeed } from "./links";
 // Types shared by the Worker API and the Mini App.
 
 export const LANGS = [
-  "en", "es", "pt", "ru", "tr", "ar", "hi", "id", "fr", "zh",
-  "de", "it", "pl", "uk", "ja", "ko", "vi", "fa", "ur", "bn",
-  "as", "ta", "bho", "pa", "gu", "mr", "or", "ne",
+  "en", "hi", "bn", "as", "ta", "ur", "bho", "pa", "gu", "mr", "or",
+  "es", "pt", "ru", "tr", "ar", "id", "fr", "zh", "de", "it", "pl", "uk", "ja", "ko", "vi", "fa", "ne",
 ] as const;
 export type Lang = (typeof LANGS)[number];
 
