@@ -37,10 +37,10 @@ function staffPermissionFor(method: string, path: string): StaffPermission | nul
   if (path.startsWith("/key-products") || path.startsWith("/key-plans") || path.startsWith("/key-stock") || path.startsWith("/stock-summary") || path.startsWith("/key-orders")) return read ? "products.read" : "products.manage";
   if (path.startsWith("/providers") || path.startsWith("/key-apis")) return "providers.manage";
   if (path.startsWith("/backup")) return "backup.manage";
-  if (path.startsWith("/reports") || path.startsWith("/money")) return "reports.read";
+  if (path.startsWith("/report") || path.startsWith("/reports") || path.startsWith("/money")) return "reports.read";
   if (path.startsWith("/campaigns") || path.startsWith("/coupons") || path.startsWith("/announcements")) return "campaigns.manage";
-  if (path.startsWith("/overview")) return "dashboard.read";
-  if (path.startsWith("/settings") || path.startsWith("/payment-methods") || path.startsWith("/messages") || path.startsWith("/branding") || path.startsWith("/owners")) return "settings.manage";
+  if (path.startsWith("/overview") || path.startsWith("/key-overview")) return "dashboard.read";
+  if (path.startsWith("/settings") || path.startsWith("/payment-methods") || path.startsWith("/key-payment-methods") || path.startsWith("/upi-gateway-settings") || path.startsWith("/messages") || path.startsWith("/branding") || path.startsWith("/owners")) return "settings.manage";
   return null;
 }
 
