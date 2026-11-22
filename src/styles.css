@@ -1193,3 +1193,22 @@ a.btn { text-decoration: none; color: var(--on-brand); }
 .ks-video-skip{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:7px;margin-top:10px}.ks-video-skip button{min-height:38px;padding:7px 5px;border:1px solid var(--line,#dce2ec);border-radius:11px;background:var(--card,#fff);color:var(--text,#172033);font-size:11px;font-weight:750}
 .ks-video-loading{padding:26px 10px;text-align:center;color:var(--muted,#7c8798);font-size:12px}.ks-video-loading a{color:var(--accent,#6558e8);font-weight:800}
 @media(max-width:360px){.funds-method-list{grid-template-columns:1fr}.funds-presets{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Contrast fixes for the Add Funds and setup-video cards in dark Telegram themes */
+.funds-page{color:#172033}
+.funds-page .funds-heading,.funds-page .funds-amount-card,.funds-page .funds-payment-card,.funds-page .funds-method{color:#172033}
+.funds-page .funds-kicker{color:#536176}
+.funds-page .funds-card-label b,.funds-page .funds-payment-head b,.funds-page .funds-method-copy b{color:#172033}
+.funds-page .funds-card-label small,.funds-page .funds-method-copy small,.funds-page .funds-payment-head small,.funds-page .funds-hint{color:#5d687a}
+.funds-page .funds-field-label{color:#263449}
+.funds-page .funds-text-input{color:#172033;background:#fff}
+.funds-page .funds-text-input::placeholder,.funds-page .funds-amount-input input::placeholder{color:#788397;opacity:1}
+.funds-page .funds-amount-input{background:#fff}
+.funds-page .funds-amount-input input{color:#172033}
+.funds-page .funds-empty-method{color:#536176}
+.funds-page .funds-submit{color:#fff}
+.ks-setup-video{background:#f8fafc;color:#172033}
+.ks-setup-video-head span{color:#172033}
+.ks-setup-video-head small,.ks-video-loading{color:#536176}
+.ks-video-skip button{color:#172033;background:#fff}
+.ks-video-loading a{color:#4338ca}
