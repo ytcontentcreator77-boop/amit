@@ -902,6 +902,18 @@ admin.post("/key-products/:id/stock", async (c)=>{
 admin.get("/key-products/:id/stock", async (c)=>{const id=Number(c.req.param("id"));const planId=Number(c.req.query("plan_id"))||null;const {results}=await c.env.DB.prepare(`SELECT id,plan_id,key_value,used,used_by,used_at,added_at FROM key_stock WHERE product_id=?1 AND (?2 IS NULL OR plan_id=?2) ORDER BY id DESC LIMIT 200`).bind(id,planId).all();return c.json({items:results});});
 admin.delete("/key-stock/:id", async (c)=>{await c.env.DB.prepare("DELETE FROM key_stock WHERE id=?1 AND used=0").bind(Number(c.req.param("id"))).run();return c.json({ok:true});});
 admin.get("/stock-summary", async (c)=>{const {results}=await c.env.DB.prepare(`SELECT p.id product_id,p.name product_name,pl.id plan_id,pl.duration,COUNT(ks.id) stock FROM key_products p JOIN key_plans pl ON pl.product_id=p.id LEFT JOIN key_stock ks ON ks.product_id=p.id AND ks.plan_id=pl.id AND ks.used=0 GROUP BY p.id,pl.id ORDER BY p.sort,pl.sort`).all();return c.json({items:results});});
+admin.get("/manual-payments/:id/proof",async(c)=>{
+ const id=Number(c.req.param("id"));if(!Number.isSafeInteger(id)||id<1)return err(c,400,"INVALID_ID");
+ const p=await c.env.DB.prepare("SELECT proof_file_id FROM manual_payments WHERE id=?1").bind(id).first<{proof_file_id:string|null}>();
+ if(!p?.proof_file_id)return err(c,404,"PROOF_NOT_FOUND");
+ const file=await tg<any>(c.env.BOT_TOKEN,"getFile",{file_id:p.proof_file_id});
+ if(!file?.file_path)return err(c,502,"PROOF_FILE_UNAVAILABLE");
+ const response=await fetch("https://api.telegram.org/file/bot"+c.env.BOT_TOKEN+"/"+file.file_path);
+ if(!response.ok)return err(c,502,"PROOF_FILE_DOWNLOAD_FAILED");
+ const bytes=new Uint8Array(await response.arrayBuffer());let binary="";for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+ const mime=response.headers.get("content-type")||"image/jpeg";
+ return c.json({dataUrl:"data:"+mime+";base64,"+btoa(binary)});
+});
 admin.get("/manual-payments", async (c)=>{const {results}=await c.env.DB.prepare(`SELECT mp.*,u.first_name,u.username FROM manual_payments mp LEFT JOIN users u ON u.id=mp.user_id ORDER BY CASE mp.status WHEN 'pending' THEN 0 ELSE 1 END,mp.id DESC LIMIT 300`).all();return c.json({items:results});});
 admin.post("/manual-payments/:id/approve", async (c)=>{
  const id=Number(c.req.param("id")); const now=Math.floor(Date.now()/1000); const b=await readBody<{amount_inr?:number}>(c);
