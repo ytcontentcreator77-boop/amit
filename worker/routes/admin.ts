@@ -593,6 +593,27 @@ admin.get("/referrals", async (c) => {
 
 // ---- Users ----
 
+admin.post("/users/add-by-id", async (c) => {
+  const b = await readBody<{ telegram_id?: number | string }>(c);
+  const id = Number(b?.telegram_id);
+  if (!Number.isSafeInteger(id) || id <= 0) return err(c, 400, "INVALID_TELEGRAM_ID");
+  const existing = await c.env.DB.prepare("SELECT id FROM users WHERE id=?1").bind(id).first<{id:number}>();
+  if (existing) return c.json({ok:true,userId:id,alreadyRegistered:true});
+  // Telegram only exposes a private chat to this bot after the person has interacted with it.
+  // This prevents admins from manufacturing user records for arbitrary IDs.
+  let chat:any;
+  try { chat = await tg<any>(c.env.BOT_TOKEN, "getChat", {chat_id:id}); }
+  catch { return err(c, 409, "USER_MUST_START_BOT", {message:"Ask this person to open the bot and press /start first, then try again."}); }
+  if (!chat || chat.type !== "private" || Number(chat.id) !== id) return err(c, 409, "USER_MUST_START_BOT");
+  const now = Math.floor(Date.now()/1000);
+  await c.env.DB.prepare(
+    "INSERT OR IGNORE INTO users (id,first_name,last_name,username,language_code,notify,created_at,last_seen_at) VALUES (?1,?2,?3,?4,?5,1,?6,?6)"
+  ).bind(id,String(chat.first_name||"").slice(0,160),String(chat.last_name||"").slice(0,160),chat.username||null,chat.language_code||null,now).run();
+  const created = await c.env.DB.prepare("SELECT id FROM users WHERE id=?1").bind(id).first<{id:number}>();
+  if (!created) return err(c, 502, "USER_REGISTRATION_FAILED");
+  return c.json({ok:true,userId:id,alreadyRegistered:false},201);
+});
+
 admin.get("/users", async (c) => {
   const q = (c.req.query("q") ?? "").trim().replace(/^@/, "").slice(0, 100);
   // Cursor "lastSeenAt_id" keeps paging stable when many users share a timestamp.
