@@ -108,9 +108,8 @@ async function onCallback(env: Env, q: any): Promise<void> {
     const text = botText(pickLang((await env.DB.prepare("SELECT lang FROM users WHERE id=?1").bind(q.from.id).first<{lang:string|null}>())?.lang??q.from.language_code),shown?"keyDeliveredRevealed":"keyDeliveredMasked",{product:safe(order.product_name),plan:safe(order.plan_duration),id:String(order.id),masked_key:safe(masked),full_key:safe(key),amount:Number(order.price_inr).toFixed(2),balance:"—"});
     const keyboard:any[][] = [[{text:shown?"🙈 Hide Key":"👁 Show Key",callback_data:`key:${shown?"hide":"show"}:${order.id}`}],[{text:"📋 Copy Key",copy_text:{text:key}}]];
     if(order.setup_file_url) keyboard.push([{text:"📥 Download Setup",url:order.setup_file_url}]);
-    const platformVideo=await env.DB.prepare("SELECT id,setup_video_file_id,setup_video_url FROM key_platforms WHERE slug=?1 COLLATE NOCASE").bind(order.platform??"").first<any>();
     const botUsername=String((await getSettings(env)).bot_username||"").replace(/^@/,"");
-    if(platformVideo&&(platformVideo.setup_video_file_id||platformVideo.setup_video_url)&&botUsername)keyboard.push([{text:"🎬 Setup Video",url:"https://t.me/"+botUsername+"?start=video"+platformVideo.id}]);
+    if(botUsername)keyboard.push([{text:"🎬 Setup Video",url:"https://t.me/"+botUsername+"?start=video"+order.product_id}]);
     await tg(env.BOT_TOKEN,"editMessageText",{chat_id:q.message.chat.id,message_id:q.message.message_id,text,parse_mode:"HTML",reply_markup:{inline_keyboard:keyboard}});
     return void (await tg(env.BOT_TOKEN,"answerCallbackQuery",{callback_query_id:q.id}));
   }
@@ -274,10 +273,10 @@ async function handle(env: Env, u: any): Promise<void> {
     return void (await (user?.lang ? sendWelcome(env, from.id, lang, from.first_name) : pickLanguage()));
   }
   if (cmd === "orders" || cmd === "keys") {
-    const {results}=await env.DB.prepare("SELECT id,product_name,plan_duration,delivered_key,price_inr,setup_file_url,platform FROM orders WHERE user_id=?1 AND delivered_key IS NOT NULL ORDER BY id DESC LIMIT 10").bind(from.id).all<any>();
+    const {results}=await env.DB.prepare("SELECT id,product_id,product_name,plan_duration,delivered_key,price_inr,setup_file_url FROM orders WHERE user_id=?1 AND delivered_key IS NOT NULL ORDER BY id DESC LIMIT 10").bind(from.id).all<any>();
     if(!results.length)return void(await send("🔑 You have no purchased keys yet. Open the store to browse products."));
     const botUsername=String((await getSettings(env)).bot_username||"").replace(/^@/,"");
-    for(const o of results){const key=String(o.delivered_key);const masked=key.length<8?"••••••":`${key.slice(0,4)}-${"•".repeat(Math.min(12,Math.max(4,key.length-4)))}`;const buttons:any[][]=[[{text:"👁 Show Key",callback_data:`key:show:${o.id}`}],[{text:"📋 Copy Key",copy_text:{text:key}}]];if(o.setup_file_url)buttons.push([{text:"📥 Download Setup",url:o.setup_file_url}]);const pv=await env.DB.prepare("SELECT id,setup_video_file_id,setup_video_url FROM key_platforms WHERE slug=?1 COLLATE NOCASE").bind(o.platform??"").first<any>();if(pv&&(pv.setup_video_file_id||pv.setup_video_url)&&botUsername)buttons.push([{text:"🎬 Setup Video",url:"https://t.me/"+botUsername+"?start=video"+pv.id}]);await send(`🔑 <b>${o.product_name}</b>\n📅 ${o.plan_duration} · #${o.id}\n🗝 <code>${masked}</code>\n💰 ₹${Number(o.price_inr).toFixed(2)}`,{inline_keyboard:buttons});}
+    for(const o of results){const key=String(o.delivered_key);const masked=key.length<8?"••••••":`${key.slice(0,4)}-${"•".repeat(Math.min(12,Math.max(4,key.length-4)))}`;const buttons:any[][]=[[{text:"👁 Show Key",callback_data:`key:show:${o.id}`}],[{text:"📋 Copy Key",copy_text:{text:key}}]];if(o.setup_file_url)buttons.push([{text:"📥 Download Setup",url:o.setup_file_url}]);if(botUsername)buttons.push([{text:"🎬 Setup Video",url:"https://t.me/"+botUsername+"?start=video"+o.product_id}]);await send(`🔑 <b>${o.product_name}</b>\n📅 ${o.plan_duration} · #${o.id}\n🗝 <code>${masked}</code>\n💰 ₹${Number(o.price_inr).toFixed(2)}`,{inline_keyboard:buttons});}
     return;
   }
   if (cmd === "wallet" || cmd === "balance") {
