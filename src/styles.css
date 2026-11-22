@@ -1157,3 +1157,39 @@ a.btn { text-decoration: none; color: var(--on-brand); }
 .campaign-admin-actions{display:flex;gap:8px;flex-wrap:wrap}
 .campaign-admin-actions button{padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--text);font-size:11px;font-weight:750}
 .campaign-proof{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:12px;background:var(--bg)}
+
+
+/* Premium wallet funding and product tutorial player */
+.funds-page{padding:0 16px 28px}
+.funds-heading{padding:8px 0 18px}
+.funds-kicker{display:inline-flex;align-items:center;gap:7px;color:var(--muted,#7c8798);font-size:10px;font-weight:850;letter-spacing:.16em;margin-bottom:9px}
+.funds-amount-card{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--line,#dfe5ee) 75%,transparent);border-radius:22px;padding:19px;background:linear-gradient(145deg,var(--card,#fff),color-mix(in srgb,var(--accent,#6558e8) 5%,var(--card,#fff)));box-shadow:0 12px 34px #1725540d}
+.funds-card-label{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.funds-coin{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,#10b981,#059669);color:#fff;font-size:22px;font-weight:900;box-shadow:0 7px 16px #05966933}
+.funds-card-label b,.funds-card-label small{display:block}.funds-card-label b{font-size:15px}.funds-card-label small{margin-top:3px;color:var(--muted,#7c8798);font-size:12px}
+.funds-amount-input{display:flex;align-items:center;gap:9px;padding:13px 15px;border:1.5px solid color-mix(in srgb,var(--accent,#6558e8) 35%,var(--line,#dfe5ee));border-radius:16px;background:var(--bg,#f8fafc)}
+.funds-amount-input>span{font-size:26px;font-weight:850;color:var(--accent,#6558e8)}
+.funds-amount-input input{width:100%;min-width:0;border:0!important;outline:0!important;background:transparent!important;font-size:30px!important;font-weight:850!important;letter-spacing:-.04em;color:var(--text,#172033)}
+.funds-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0 10px}
+.funds-presets button{min-height:38px;border:1px solid var(--line,#e1e6ef);border-radius:12px;background:var(--card,#fff);color:var(--text,#172033);font-size:12px;font-weight:750}
+.funds-presets button.active{border-color:var(--accent,#6558e8);background:color-mix(in srgb,var(--accent,#6558e8) 10%,var(--card,#fff));color:var(--accent,#6558e8)}
+.funds-hint{display:block;color:var(--muted,#7c8798);font-size:11px}
+.funds-method-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.funds-method{display:flex;align-items:center;gap:10px;min-width:0;min-height:76px;padding:12px;border:1.5px solid var(--line,#e1e6ef);border-radius:17px;background:var(--card,#fff);text-align:left;transition:border-color .18s,background .18s,transform .18s}
+.funds-method.selected{border-color:var(--accent,#6558e8);background:color-mix(in srgb,var(--accent,#6558e8) 7%,var(--card,#fff));box-shadow:0 0 0 2px color-mix(in srgb,var(--accent,#6558e8) 10%,transparent)}
+.funds-method:active{transform:scale(.985)}
+.funds-brand-logo{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:13px;background:#eef2ff;color:#4338ca;font-size:12px;font-weight:950;letter-spacing:-.04em;box-shadow:inset 0 0 0 1px #0000000a}
+.funds-brand-logo.upi{background:#e8f8ef;color:#087b45}.funds-brand-logo.phonepe{background:#f0eaff;color:#673ab7;font-size:18px}.funds-brand-logo.gpay{background:#fff;color:#4285f4;font-size:24px}.funds-brand-logo.bhim{background:#fff4e5;color:#9a5200;font-size:9px}.funds-brand-logo.bank{background:#e9f0fa;color:#234a79;font-size:9px}.funds-brand-logo.binance{background:#fff7d6;color:#b77900;font-size:24px}.funds-brand-logo.usdt{background:#e5f8f1;color:#15966a;font-size:25px}.funds-brand-logo.paypal{background:#e8f1ff;color:#0755a6;font-size:23px}.funds-brand-logo.skrill{background:#fce9ed;color:#b21f43;font-size:23px}.funds-brand-logo.redot{background:#edf1f5;color:#26364a;font-size:22px}.funds-brand-logo.stars{background:#fff5d7;color:#c18a00;font-size:22px}
+.funds-method-copy{display:block;min-width:0;flex:1}.funds-method-copy b{display:block;font-size:12px;line-height:1.3;color:var(--text,#172033)}.funds-method-copy small{display:block;margin-top:4px;color:var(--muted,#7c8798);font-size:10px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.funds-method-radio{display:grid;place-items:center;flex:0 0 20px;width:20px;height:20px;border:1.5px solid var(--line,#d7deea);border-radius:50%;font-size:11px;font-weight:900;color:white}.funds-method.selected .funds-method-radio{background:var(--accent,#6558e8);border-color:var(--accent,#6558e8)}
+.funds-payment-card{margin-top:16px;padding:17px;border:1px solid var(--line,#e1e6ef);border-radius:20px;background:var(--card,#fff);box-shadow:0 12px 30px #1725540b}
+.funds-payment-head{display:flex;align-items:center;gap:12px}.funds-payment-head>span:last-child{display:grid;gap:3px}.funds-payment-head small{font-size:9px;letter-spacing:.13em;color:var(--muted,#7c8798);font-weight:850}.funds-payment-head b{font-size:15px}
+.funds-payment-card>p{font-size:12px;line-height:1.55;color:var(--muted,#657187)}.funds-field-label{display:grid;gap:7px;margin-top:14px;font-size:12px;font-weight:750}.funds-text-input{width:100%;min-width:0;padding:12px;border:1px solid var(--line,#dce2ec);border-radius:12px;background:var(--bg,#f8fafc);color:var(--text,#172033)}
+.funds-submit{width:100%;min-height:48px;margin-top:16px;border:0;border-radius:14px;background:linear-gradient(110deg,var(--accent,#6558e8),color-mix(in srgb,var(--accent,#6558e8) 72%,#9b8cff));color:#fff;font-size:14px;font-weight:850;box-shadow:0 9px 20px color-mix(in srgb,var(--accent,#6558e8) 24%,transparent)}
+.funds-submit:disabled{opacity:.45;box-shadow:none}.funds-empty-method{padding:18px;border:1px dashed var(--line,#dce2ec);border-radius:16px;text-align:center;color:var(--muted,#7c8798);font-size:12px}
+.ks-setup-video{margin-top:18px;padding:14px;border:1px solid var(--line,#e1e6ef);border-radius:18px;background:var(--bg,#f8fafc)}
+.ks-setup-video-head{display:grid;gap:4px;margin-bottom:12px}.ks-setup-video-head span{font-size:10px;font-weight:900;letter-spacing:.13em}.ks-setup-video-head small{font-size:11px;color:var(--muted,#7c8798)}
+.ks-video-player{display:block;width:100%;max-height:360px;aspect-ratio:16/9;border-radius:13px;background:#080b12;object-fit:contain}
+.ks-video-skip{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:7px;margin-top:10px}.ks-video-skip button{min-height:38px;padding:7px 5px;border:1px solid var(--line,#dce2ec);border-radius:11px;background:var(--card,#fff);color:var(--text,#172033);font-size:11px;font-weight:750}
+.ks-video-loading{padding:26px 10px;text-align:center;color:var(--muted,#7c8798);font-size:12px}.ks-video-loading a{color:var(--accent,#6558e8);font-weight:800}
+@media(max-width:360px){.funds-method-list{grid-template-columns:1fr}.funds-presets{grid-template-columns:repeat(3,minmax(0,1fr))}}
