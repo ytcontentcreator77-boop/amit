@@ -435,7 +435,7 @@ async function handleCallback(env: Env, s: Settings, q: Q & Required<Pick<Q, "me
       return card();
     case "pv": {
       if (!draft) return menu("That draft no longer exists");
-      const u = await env.DB.prepare("SELECT lang,language_code,first_name,username,balance_inr,created_at FROM users WHERE id=?1").bind(admin).first<any>();
+      const u = await env.DB.prepare("SELECT lang,language_code,first_name,last_name,username,balance_inr,created_at FROM users WHERE id=?1").bind(admin).first<any>();
       const open = draft.app ? openButton(pickLang(u?.lang ?? u?.language_code ?? q.from.language_code), s) : null;
       const [counts,latest] = await env.DB.batch([
         env.DB.prepare("SELECT COUNT(*) AS orders,COUNT(delivered_key) AS totalkeys FROM orders WHERE user_id=?1").bind(admin),
