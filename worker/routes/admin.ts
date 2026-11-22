@@ -1064,18 +1064,45 @@ async function backupOrder(db: AppEnv["Bindings"]["DB"], names: string[]): Promi
   }
   return ordered;
 }
+async function buildBackup(db: AppEnv["Bindings"]["DB"], scope: BackupScope) {
+  const all = await backupTables(db);
+  const names = scope === "users" ? ["users"] : scope === "key-catalog" ? ["key_categories","key_platforms"] : all;
+  for (const name of names) if (!all.includes(name)) throw new Error("BACKUP_TABLE_MISSING:" + name);
+  const tables: Record<string, unknown[]> = {};
+  for (const name of names) {
+    const r = await db.prepare("SELECT * FROM " + quoteTable(name)).all();
+    tables[name] = r.results as unknown[];
+  }
+  return { format:BACKUP_FORMAT, version:1, scope, exportedAt:new Date().toISOString(), tables };
+}
 admin.get("/backup/export", async (c) => {
   const scope = (c.req.query("scope") || "full") as BackupScope;
   if (!["full","key-catalog","users"].includes(scope)) return err(c,400,"INVALID_BACKUP_SCOPE");
-  const all = await backupTables(c.env.DB);
-  const names = scope === "users" ? ["users"] : scope === "key-catalog" ? ["key_categories","key_platforms"] : all;
-  for (const name of names) if (!all.includes(name)) return err(c,500,"BACKUP_TABLE_MISSING",{table:name});
-  const tables: Record<string, unknown[]> = {};
-  for (const name of names) {
-    const r = await c.env.DB.prepare("SELECT * FROM " + quoteTable(name)).all();
-    tables[name] = r.results as unknown[];
+  try { return c.json(await buildBackup(c.env.DB,scope)); }
+  catch(e) { return err(c,500,"BACKUP_EXPORT_FAILED",{message:String((e as Error).message).slice(0,180)}); }
+});
+admin.post("/backup/send", async (c) => {
+  const b=await readBody<{scope?:BackupScope}>(c);
+  const scope=(b?.scope||"full") as BackupScope;
+  if (!["full","key-catalog","users"].includes(scope)) return err(c,400,"INVALID_BACKUP_SCOPE");
+  const data=await buildBackup(c.env.DB,scope);
+  const json=JSON.stringify(data,null,2);
+  const filename="hero-bot-"+scope+"-backup-"+new Date().toISOString().slice(0,10)+".json";
+  const admins=ownerIds(c.env,c.get("settings"));
+  if(!admins.length) return err(c,409,"NO_ADMIN_CHAT_CONFIGURED");
+  let sent=0;
+  for(const adminId of admins){
+    const form=new FormData();
+    form.set("chat_id",String(adminId));
+    form.set("caption", "🔐 "+scope.toUpperCase()+" DATABASE BACKUP\\nTables: "+Object.keys(data.tables).length+"\\nRecords: "+Object.values(data.tables).reduce((n,v)=>n+v.length,0)+"\\nCreated: "+data.exportedAt+"\\nPrivate admin backup — do not share.");
+    form.set("document",new Blob([json],{type:"application/json"}),filename);
+    const response=await fetch("https://api.telegram.org/bot"+c.env.BOT_TOKEN+"/sendDocument",{method:"POST",body:form});
+    const result=await response.json() as any;
+    if(result?.ok) sent++;
+    else console.error("admin backup delivery failed",adminId,result?.description||response.status);
   }
-  return c.json({ format:BACKUP_FORMAT, version:1, scope, exportedAt:new Date().toISOString(), tables });
+  if(!sent) return err(c,502,"BACKUP_DELIVERY_FAILED");
+  return c.json({ok:true,sent,admins:admins.length,scope,filename,tables:Object.keys(data.tables).length,records:Object.values(data.tables).reduce((n,v)=>n+v.length,0)});
 });
 admin.post("/backup/import", async (c) => {
   const b = await readBody<any>(c);
