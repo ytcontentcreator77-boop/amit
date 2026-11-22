@@ -56,6 +56,7 @@ export function App() {
   useLang();
   const me = meStore.use();
   const route = useRoute();
+  useEffect(() => { document.documentElement.toggleAttribute("data-profile-page", route.path === "/profile"); }, [route.path]);
   const [error, setError] = useState<unknown>(null);
   // A plain browser (not Telegram, not the local dev user): the setup wizard, or "Open the bot in Telegram"
   const [outside, setOutside] = useState(false);
