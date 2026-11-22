@@ -65,8 +65,9 @@ export async function createInvoice(
 
 /** Cron: unpaid invoices expire after an hour, so drop the ones older than a day. */
 export async function cleanupPendingPayments(env: Env): Promise<void> {
-  const cutoff = Math.floor(Date.now() / 1000) - 86400;
-  await env.DB.prepare("DELETE FROM payments WHERE status = 'pending' AND created_at < ?1").bind(cutoff).run();
+  const now = Math.floor(Date.now() / 1000);
+  // Stars invoices expire after one hour. Keep expired rows for reconciliation and audit instead of deleting them.
+  await env.DB.prepare("UPDATE payments SET status = 'expired' WHERE status = 'pending' AND created_at < ?1").bind(now - 3600).run();
 }
 
 async function paymentFromPayload(env: Env, payload: string): Promise<PaymentRow | null> {
