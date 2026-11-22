@@ -180,19 +180,21 @@ async function handle(env: Env, u: any): Promise<void> {
     return;
   }
   const proofCaption=String(m.caption??"");const proofMatch=/^\/proof\s+(\d+)/i.exec(proofCaption);if(proofMatch&&(m.photo?.length||m.document?.file_id)){const fileId=m.photo?.[m.photo.length-1]?.file_id??m.document?.file_id;const id=Number(proofMatch[1]);const r=await env.DB.prepare("UPDATE manual_payments SET proof_file_id=?3 WHERE id=?1 AND user_id=?2 AND status='pending'").bind(id,from.id,fileId).run();await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:r.meta.changes?"✅ Payment proof attached. Your payment is waiting for admin review.":"Pending payment not found. Please check the payment ID."});if(r.meta.changes){const p=await env.DB.prepare("SELECT amount_inr,method_name,utr_ref FROM manual_payments WHERE id=?1").bind(id).first<any>();for(const adminId of ownerIds(env,await getSettings(env))){await tg(env.BOT_TOKEN,"sendMessage",{chat_id:adminId,text:`📎 <b>PAYMENT PROOF RECEIVED</b>\nPayment #${id} · User ${from.id}\n${p?.method_name} · ₹${Number(p?.amount_inr??0).toFixed(2)}\nUTR: ${p?.utr_ref??"—"}`,parse_mode:"HTML",reply_markup:{inline_keyboard:[[{text:"✅ Approve",callback_data:`pay:approve:${id}`},{text:"❌ Reject",callback_data:`pay:reject:${id}`}]]}});if(m.photo?.length)await tg(env.BOT_TOKEN,"sendPhoto",{chat_id:adminId,photo:fileId,caption:`Payment proof #${id}`});else if(m.document?.file_id)await tg(env.BOT_TOKEN,"sendDocument",{chat_id:adminId,document:fileId,caption:`Payment proof #${id}`});}}return;}
-  // Platform setup videos: send/reply to a video with "/addv PLATFORM_SLUG".
+  // Product-specific setup videos: send/reply to a video with "/addv PRODUCT_ID".
   if (isOwner(env, await getSettings(env), from.id)) {
     const setupCaption=String(m.caption??m.text??"").trim();
-    const addVideo=/^\/addv\s+([a-z0-9_-]+)$/i.exec(setupCaption);
+    const addVideo=/^\/addv\s+(\d+)$/i.exec(setupCaption);
     const setupVideo=m.video??m.reply_to_message?.video;
     if(addVideo&&setupVideo){
-      const platform=await env.DB.prepare("SELECT id,name FROM key_platforms WHERE slug=?1 COLLATE NOCASE").bind(addVideo[1]).first<any>();
-      if(!platform){await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:"Platform not found. Use the platform slug shown in Admin → Key products & stock."});return;}
-      await env.DB.prepare("UPDATE key_platforms SET setup_video_file_id=?2,setup_video_url=NULL WHERE id=?1").bind(platform.id,setupVideo.file_id).run();
+      const productId=Number(addVideo[1]);
+      const product=await env.DB.prepare("SELECT id,name FROM key_products WHERE id=?1").bind(productId).first<any>();
+      if(!product){await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:"Product not found. Use the product ID shown in Admin → Key products & stock."});return;}
+      await env.DB.prepare("UPDATE key_products SET setup_video_file_id=?2,setup_video_url=NULL WHERE id=?1").bind(productId,setupVideo.file_id).run();
       const username=String((await getSettings(env)).bot_username||"").replace(/^@/,"");
-      await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:"✅ Setup video saved for "+platform.name+"."+(username?"\nLink: https://t.me/"+username+"?start=video"+platform.id:"\nSet the bot username to generate its deep link.")});
+      await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:"✅ Setup video saved for "+product.name+"."+(username?"\nLink: https://t.me/"+username+"?start=video"+productId:"\nSet the bot username to generate its deep link.")});
       return;
     }
+  }
     const bodyText=String(m.text??m.caption??"").trim();
     const uploadMatch=/^\/upload\s+(P[0-9A-Z_-]+)(?:\s+([\s\S]*))?$/i.exec(bodyText);
     const hasMedia=!!(m.document||m.photo?.length||m.video||m.animation||m.audio||m.voice||m.video_note||m.sticker);
@@ -229,15 +231,15 @@ async function handle(env: Env, u: any): Promise<void> {
   // First-admin claim: "/start claim_<code>" (the setup link) or "/claim <code>". Wrong codes look like any other message.
   const arg = text.split(/\s+/)[1] ?? "";
   if(cmd==="addv"&&isOwner(env,await getSettings(env),from.id)){
-    const parts=text.split(/\s+/);const slug=parts[1]??"";const videoUrl=parts.slice(2).join(" ").trim();
-    if(!slug)return void(await send("Use <code>/addv PLATFORM_SLUG https://video-link</code>, or reply to a Telegram video with <code>/addv PLATFORM_SLUG</code>."));
-    const platform=await env.DB.prepare("SELECT id,name FROM key_platforms WHERE slug=?1 COLLATE NOCASE").bind(slug).first<any>();
-    if(!platform)return void(await send("Platform not found. Check the platform slug in Admin → Key products & stock."));
-    if(!videoUrl)return void(await send("Send a video with caption <code>/addv "+slug+"</code>, or reply to a video with that command."));
+    const parts=text.split(/\s+/);const productId=Number(parts[1]);const videoUrl=parts.slice(2).join(" ").trim();
+    if(!Number.isSafeInteger(productId)||productId<1)return void(await send("Use <code>/addv PRODUCT_ID https://video-link</code>, or send/reply to a video with caption <code>/addv PRODUCT_ID</code>."));
+    const product=await env.DB.prepare("SELECT id,name FROM key_products WHERE id=?1").bind(productId).first<any>();
+    if(!product)return void(await send("Product not found. Use the product ID shown in Admin → Key products & stock."));
+    if(!videoUrl)return void(await send("Send a video with caption <code>/addv "+productId+"</code>, or reply to a video with that command."));
     if(!/^https?:\/\//i.test(videoUrl))return void(await send("Video URL must start with https:// or http://"));
-    await env.DB.prepare("UPDATE key_platforms SET setup_video_url=?2,setup_video_file_id=NULL WHERE id=?1").bind(platform.id,videoUrl.slice(0,1000)).run();
+    await env.DB.prepare("UPDATE key_products SET setup_video_url=?2,setup_video_file_id=NULL WHERE id=?1").bind(productId,videoUrl.slice(0,1000)).run();
     const username=String((await getSettings(env)).bot_username||"").replace(/^@/,"");
-    return void(await send("✅ Setup video link saved for <b>"+platform.name+"</b>."+(username?"\nhttps://t.me/"+username+"?start=video"+platform.id:"\nSet the bot username in setup to generate its deep link.")));
+    return void(await send("✅ Setup video link saved for <b>"+product.name+"</b>."+(username?"\nhttps://t.me/"+username+"?start=video"+productId:"\nSet the bot username in setup to generate its deep link.")));
   }
   if (cmd === "claim" || (cmd === "start" && arg.startsWith("claim_"))) {
     const code = cmd === "claim" ? arg : arg.slice("claim_".length);
@@ -250,11 +252,14 @@ async function handle(env: Env, u: any): Promise<void> {
   if (cmd === "paysupport" || cmd === "support") return void (await sendHelp(env, from.id, lang, "paysupport"));
   if (cmd === "language") return void (await pickLanguage());
   if(cmd==="start"&&/^video\d+$/.test(arg)){
-    const platformId=Number(arg.slice(5));
-    const video=await env.DB.prepare("SELECT name,setup_video_file_id,setup_video_url FROM key_platforms WHERE id=?1 AND enabled=1").bind(platformId).first<any>();
-    if(!video||(!video.setup_video_file_id&&!video.setup_video_url))return;
-    if(video.setup_video_file_id)await tg(env.BOT_TOKEN,"sendVideo",{chat_id:from.id,video:video.setup_video_file_id,caption:"🎬 "+video.name+" setup tutorial"});
-    else await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:"🎬 "+video.name+" setup tutorial",reply_markup:{inline_keyboard:[[{text:"▶️ Watch setup video",url:video.setup_video_url}]]}});
+    const productId=Number(arg.slice(5));
+    const product=await env.DB.prepare("SELECT name,setup_video_file_id,setup_video_url FROM key_products WHERE id=?1 AND enabled=1").bind(productId).first<any>();
+    if(!product||(!product.setup_video_file_id&&!product.setup_video_url)){
+      await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:"🎬 Setup video not configured yet for this product. Please contact support if you need help."});
+      return;
+    }
+    if(product.setup_video_file_id)await tg(env.BOT_TOKEN,"sendVideo",{chat_id:from.id,video:product.setup_video_file_id,caption:"🎬 "+product.name+" setup tutorial"});
+    else await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:"🎬 "+product.name+" setup tutorial",reply_markup:{inline_keyboard:[[{text:"▶️ Watch setup video",url:product.setup_video_url}]]}});
     return;
   }
   if (cmd === "start") {
