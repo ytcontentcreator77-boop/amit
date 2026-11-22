@@ -108,7 +108,15 @@ export function draftView(o: { draft: Draft; v: number; audience: number; runnin
     `  ┗ 👥 Audience: <b>${num(o.audience)}</b> users\n` +
     (list ? `\n${list}\n` : "") +
     (o.running ? "\n⚠️ <i>Another broadcast is running. You can send this one after it finishes.</i>\n" : "") +
-    "\n<b>Available variables</b>\n<code>{name}</code> · <code>{username}</code> · <code>{balance}</code> · <code>{totalkeys}</code>\n<code>{key_1}</code> · <code>{key_2}</code> · <code>{key_3}</code> · <code>{product}</code>\n<code>{expiry}</code> · <code>{joined}</code> · <code>{orders}</code> · <code>{brand}</code> · <code>{support}</code>\n\n<i>Preview it first to see your personal values.</i>";
+    "\n<b>Available variables</b>\n" +
+    "<code>{name}</code> · <code>{first_name}</code> · <code>{last_name}</code> · <code>{username}</code> · <code>{user_id}</code>\n" +
+    "<code>{balance}</code> · <code>{wallet_balance}</code> · <code>{orders}</code> · <code>{total_orders}</code> · <code>{totalkeys}</code> · <code>{total_keys}</code>\n" +
+    "<code>{key_1}</code> · <code>{key_2}</code> · <code>{key_3}</code> · <code>{product}</code> · <code>{expiry}</code>\n" +
+    "<code>{joined}</code> · <code>{joined_days}</code> · <code>{brand}</code> · <code>{support}</code> · <code>{today}</code> · <code>{year}</code>\n\n" +
+    "<b>Referral variables</b>\n<code>{referrals}</code> = total referrals · <code>{refferuser1}</code> = first referred user's name\n" +
+    "<code>{refferuser2}</code> = second referred user's name · <code>{yourallrefeers}</code> = all referred users' names\n" +
+    "Also: <code>{referral_count}</code> · <code>{referral_user1}</code> · <code>{referral_user2}</code> · <code>{all_referrals}</code> · <code>{referral_rewarded}</code> · <code>{referral_pending}</code>\n\n" +
+    "<i>Preview it first to see your personal values. Missing referral names are left blank.</i>";
   const rows: Btn1[][] = [[b("👁 Preview (sent to you)", "bc:pv")]];
   const edit: Btn1[] = [];
   if (d.b.length < MAX_BUTTONS) edit.push(b("➕ Add button", "bc:add"));
