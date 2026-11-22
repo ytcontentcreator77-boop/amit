@@ -55,6 +55,7 @@ export function AdminRoutes({ parts, query }: { parts: string[]; query: URLSearc
   if (a === "prices") return <AdminPrices q={query.get("q") ?? ""} />;
   if (a === "changes") return <AdminChanges />;
   if (a === "payments") return <AdminPayments user={query.get("user")} q0={query.get("q") ?? ""} />;
+  if (a === "staff") return <AdminStaff />;
   if (a === "users" && b) return <AdminUser id={b} />;
   if (a === "users") return <AdminUsers />;
   if (a === "referrals") return <AdminReferrals />;
@@ -309,6 +310,7 @@ const MANAGE: [string, IconName, string, string][] = [
   ["Key products & stock", "tag", "var(--lime)", "/admin/key-store"],
   ["Reseller API providers", "plug", "var(--sky)", "/admin/key-apis"],
   ["Manual payment approvals", "receipt", "var(--sky)", "/admin/manual-payments"],
+  ["Staff & permissions", "users", "var(--pink)", "/admin/staff"],
   ["Payments", "wallet", "var(--lime)", "/admin/payments"],
   ["Users", "users", "var(--pink)", "/admin/users"],
   ["Referrals", "star", "var(--cream)", "/admin/referrals"],
@@ -366,6 +368,57 @@ function AdminHome() {
       </Loader>
     </Page>
   );
+}
+
+
+const STAFF_GROUPS: [string, string, string][] = [
+  ["Dashboard", "dashboard.read", "View dashboard and operational overview"],
+  ["Payments", "payments.read", "View payment records and transaction details"],
+  ["Payment review", "payments.review", "Approve or reject manual payment proofs"],
+  ["Refunds", "payments.refund", "Issue payment refunds"],
+  ["Users", "users.read", "View customer profiles and account details"],
+  ["User management", "users.manage", "Edit or restrict customer accounts"],
+  ["Orders", "orders.read", "View orders and delivery status"],
+  ["Order management", "orders.manage", "Manage, cancel or update orders"],
+  ["Products", "products.read", "View products, plans and inventory"],
+  ["Product management", "products.manage", "Edit products, plans and stock"],
+  ["Provider management", "providers.manage", "Manage reseller API providers"],
+  ["Reports", "reports.read", "View revenue and profit reports"],
+  ["Backup & restore", "backup.manage", "Export, send and restore backups"],
+  ["Campaigns", "campaigns.manage", "Manage coupons, announcements and campaigns"],
+  ["Settings", "settings.manage", "Change bot, payment-method and store settings"],
+];
+
+function AdminStaff() {
+  const res = useAsync(() => api<{items:any[]}>("/admin/staff"), []);
+  const [userId,setUserId]=useState("");
+  const [name,setName]=useState("");
+  const [permissions,setPermissions]=useState<Record<string,boolean>>({"dashboard.read":true,"payments.read":true});
+  const [busy,setBusy]=useState(false);
+  const save=async()=>{
+    if(!/^\\d{5,15}$/.test(userId.trim()))return void toast("Enter a valid Telegram user ID (5–15 digits).","error");
+    if(!Object.values(permissions).some(Boolean))return void toast("Select at least one permission.","error");
+    setBusy(true);
+    try{
+      await api("/admin/staff",{method:"POST",body:{user_id:Number(userId.trim()),display_name:name.trim(),permissions}});
+      setUserId("");setName("");res.reload();toast("Staff access saved.","ok");
+    }catch(e){fail(e);}finally{setBusy(false);}
+  };
+  const remove=async(id:number)=>{
+    if(!(await confirmDialog("Deactivate staff member "+id+"? Their admin access will stop immediately.","Deactivate","Cancel",true)))return;
+    try{await api("/admin/staff/"+id,{method:"DELETE"});res.reload();toast("Staff access deactivated.","ok");}catch(e){fail(e);}
+  };
+  return <Page back="/admin" title="Staff & permissions" sub="Give each staff member access only to the areas they manage. Owners keep full control.">
+    <Section header="Add or update staff" footer="The person must have opened the bot and appeared in your user database at least once. Saving an existing ID updates its permissions.">
+      <Field id="staff-id" label="Telegram user ID" value={userId} onInput={setUserId} inputMode="numeric" placeholder="e.g. 123456789"/>
+      <Field id="staff-name" label="Staff display name (optional)" value={name} onInput={setName} placeholder="Support agent"/>
+      {STAFF_GROUPS.map(([label,key,description])=><Row key={key} title={label} meta={description} chevron={false} control={<Switch on={!!permissions[key]} label={label} onChange={v=>setPermissions(p=>({...p,[key]:v}))}/>}/>)}
+      <Chip tint label={busy?"Saving…":"Save staff permissions"} onClick={()=>void save()}/>
+    </Section>
+    <Section header="Current staff">
+      {res.error?<ErrorState error={res.error} onRetry={res.reload}/>:!res.data?<SkeletonList rows={3}/>:res.data.items.length?<List>{res.data.items.map((x:any)=><Row key={x.user_id} title={x.display_name||x.first_name||String(x.user_id)} meta={"ID "+x.user_id+" · "+(x.active?"Active":"Inactive")+" · "+STAFF_GROUPS.filter(([,k])=>x.permissions?.[k]).map(([n])=>n).join(", ")} value={<Chip label="Deactivate" onClick={()=>void remove(x.user_id)}/>} chevron={false}/>)}</List>:<EmptyState compact title="No staff members yet" body="Add a Telegram user ID and choose their permissions above."/>}
+    </Section>
+  </Page>;
 }
 
 // ---------------- Prices ----------------
