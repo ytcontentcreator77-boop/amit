@@ -1213,3 +1213,116 @@ a.btn { text-decoration: none; color: var(--on-brand); }
 .ks-video-skip button{color:#172033;background:#fff}
 .ks-video-loading a{color:#4338ca}
 .funds-page .funds-heading h1,.funds-page .funds-heading h2,.funds-page .funds-heading p,.funds-page .section-title,.funds-page .section-heading{color:#172033}
+
+
+/* =========================================================================
+   Professional visual refresh — all screens except the intentionally
+   preserved Profile page. Brand accent remains owner-configurable.
+   ========================================================================= */
+:root:not([data-profile-page]) {
+  --page: #f5f7fc;
+  --card: #ffffff;
+  --sheet: #f5f7fc;
+  --sheet-card: #ffffff;
+  --elevated: #ffffff;
+  --fg: #172033;
+  --hint: #68748a;
+  --label-3: #8994a8;
+  --sep: #e7ebf3;
+  --fill: #f0f3f9;
+  --fill-2: #e8edf6;
+  --pressed: rgba(32, 56, 104, .08);
+  --chip: #eef2f9;
+  --plate-bd: rgba(30, 48, 82, .08);
+  --brand: #315efb;
+  --brand-pressed: #2448d8;
+  --brand-ring: #315efb;
+  --acc: #315efb;
+  --sel: #eaf0ff;
+  --sel-fg: #2448c7;
+  --ink: #15254b;
+  --hero-1: #234fe8;
+  --hero-2: #315efb;
+  --hero-3: #1739b4;
+  --bar: rgba(255,255,255,.92);
+  --bar-solid: #ffffff;
+  --bar-bd: rgba(30,48,82,.09);
+  --shadow: 0 12px 34px -20px rgba(25,43,82,.28);
+  --shadow-brand: 0 14px 30px -16px rgba(49,94,251,.62);
+  --r-card: 22px;
+  --r-hero: 26px;
+  --r-opt: 17px;
+}
+:root[data-theme="dark"]:not([data-profile-page]) {
+  --page: #0b1020;
+  --card: #141c2e;
+  --sheet: #10182a;
+  --sheet-card: #1a253b;
+  --elevated: #26334c;
+  --fg: #f3f6ff;
+  --hint: #a5b0c5;
+  --label-3: #8390a8;
+  --sep: #29354c;
+  --fill: #202c42;
+  --fill-2: #293750;
+  --pressed: rgba(255,255,255,.09);
+  --chip: #202c42;
+  --plate-bd: rgba(255,255,255,.08);
+  --sel: #1b2a50;
+  --sel-fg: #a9bdff;
+  --bar: rgba(17,25,43,.94);
+  --bar-solid: #141c2e;
+  --bar-bd: rgba(255,255,255,.08);
+  --shadow: 0 14px 38px -20px rgba(0,0,0,.65);
+}
+:root:not([data-profile-page]) body {
+  background: var(--page);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+:root:not([data-profile-page]) .card,
+:root:not([data-profile-page]) .sheet-card {
+  border: 1px solid var(--plate-bd);
+  box-shadow: 0 5px 22px -17px rgba(20,38,75,.32);
+}
+:root:not([data-profile-page]) button,
+:root:not([data-profile-page]) .btn,
+:root:not([data-profile-page]) [role="button"] {
+  font-weight: 650;
+  letter-spacing: -.01em;
+  transition: transform 140ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+:root:not([data-profile-page]) button:active,
+:root:not([data-profile-page]) .btn:active,
+:root:not([data-profile-page]) [role="button"]:active {
+  transform: scale(.975);
+}
+:root:not([data-profile-page]) input,
+:root:not([data-profile-page]) textarea,
+:root:not([data-profile-page]) select {
+  color: var(--fg);
+  background: var(--card);
+  border-color: var(--sep);
+}
+:root:not([data-profile-page]) input:focus,
+:root:not([data-profile-page]) textarea:focus,
+:root:not([data-profile-page]) select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
+  outline: none;
+}
+:root:not([data-profile-page]) a { text-underline-offset: 3px; }
+:root:not([data-profile-page]) ::selection { background: color-mix(in srgb, var(--brand) 22%, transparent); }
+:root:not([data-profile-page]) :focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-profile-page]) *,
+  :root:not([data-profile-page]) *::before,
+  :root:not([data-profile-page]) *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}
