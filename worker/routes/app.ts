@@ -433,6 +433,17 @@ app.get("/payments/:id", async (c) => {
   if (!p) return err(c, 404, "NOT_FOUND");
   return c.json({ id: p.id, status: p.status, orderId: p.order_id, balance: c.get("user").balance });
 });
+app.get("/payments/:id/receipt", async (c) => {
+  const p=await c.env.DB.prepare("SELECT id,user_id,stars,amount,status,charge_id,created_at,paid_at FROM payments WHERE id=?1 AND user_id=?2").bind(Number(c.req.param("id")),c.get("user").id).first<any>();
+  if(!p)return err(c,404,"NOT_FOUND");
+  if(p.status!=="paid"&&p.status!=="refunded")return err(c,409,"PAYMENT_NOT_COMPLETED");
+  const settings=c.get("settings"),inr=(Number(p.amount||0)/1000000)*Number(settings.inr_per_usd||1);
+  const esc=(v:unknown)=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]!));
+  const date=new Date(Number(p.paid_at||p.created_at)*1000).toISOString();
+  const html="<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Receipt #"+p.id+"</title><style>body{font:16px system-ui;background:#f4f5f8;color:#171923;padding:24px}.receipt{max-width:620px;margin:30px auto;background:white;padding:32px;border-radius:18px}h1{margin-top:0}.muted{color:#667085}.line{display:flex;justify-content:space-between;border-top:1px solid #e5e7eb;padding:14px 0}button{padding:12px 18px;border:0;border-radius:10px;background:#2457ef;color:white}@media print{body{background:white;padding:0}.receipt{margin:0;box-shadow:none}}</style></head><body><main class=\"receipt\"><h1>Payment receipt</h1><p class=\"muted\">Amit Bot · Digital wallet</p><div class=\"line\"><span>Receipt number</span><b>#"+esc(p.id)+"</b></div><div class=\"line\"><span>Status</span><b>"+esc(p.status.toUpperCase())+"</b></div><div class=\"line\"><span>Payment date (UTC)</span><b>"+esc(date)+"</b></div><div class=\"line\"><span>Telegram Stars</span><b>"+esc(p.stars)+" XTR</b></div><div class=\"line\"><span>Wallet credit</span><b>₹"+inr.toFixed(2)+"</b></div><div class=\"line\"><span>Telegram charge reference</span><b>"+esc(p.charge_id||"—")+"</b></div><p class=\"muted\">Keep this receipt for your records. For payment support, contact the store administrator.</p><button onclick=\"window.print()\">Print / Save as PDF</button></main></body></html>";
+  return c.body(html,200,{"content-type":"text/html; charset=utf-8","content-disposition":'attachment; filename="amit-receipt-'+p.id+'.html'","cache-control":"no-store"});
+});
+
 
 // ---- Key delivery storefront (INR wallet; legacy SMM routes remain isolated for historical data) ----
 const DEFAULT_KEY_METHODS = [
