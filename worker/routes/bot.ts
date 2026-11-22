@@ -256,8 +256,18 @@ async function handle(env: Env, u: any): Promise<void> {
       await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:"🎬 Setup video not configured yet for this product. Please contact support if you need help."});
       return;
     }
-    if(product.setup_video_file_id)await tg(env.BOT_TOKEN,"sendVideo",{chat_id:from.id,video:product.setup_video_file_id,caption:"🎬 "+product.name+" setup tutorial"});
-    else await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:"🎬 "+product.name+" setup tutorial",reply_markup:{inline_keyboard:[[{text:"▶️ Watch setup video",url:product.setup_video_url}]]}});
+    if(product.setup_video_file_id){
+      await tg(env.BOT_TOKEN,"sendVideo",{chat_id:from.id,video:product.setup_video_file_id,caption:"🎬 "+product.name+" setup tutorial",supports_streaming:true});
+    }else{
+      // Prefer delivering the media itself. Telegram accepts direct, publicly reachable video URLs here.
+      // If the configured URL is a webpage (rather than a direct video file), keep a clear fallback link.
+      try{
+        await tg(env.BOT_TOKEN,"sendVideo",{chat_id:from.id,video:product.setup_video_url,caption:"🎬 "+product.name+" setup tutorial",supports_streaming:true});
+      }catch(e){
+        console.warn("setup video URL could not be sent as Telegram video",productId,(e as Error).message);
+        await tg(env.BOT_TOKEN,"sendMessage",{chat_id:from.id,text:"🎬 "+product.name+" setup tutorial",reply_markup:{inline_keyboard:[[{text:"▶️ Watch setup video",url:product.setup_video_url}]]}});
+      }
+    }
     return;
   }
   if (cmd === "start") {
