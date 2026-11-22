@@ -496,8 +496,10 @@ app.post("/wallet/topup-manual",async(c)=>{
  const method=methods.find(m=>m.id===b.method_id&&m.enabled!==false);
  if(!method)return err(c,400,"PAYMENT_METHOD_DISABLED");
  if(method.id==="stars")return err(c,400,"USE_STARS_TOPUP");
+ const utr=String(b.utr_ref??"").trim().slice(0,120);
+ if(utr){const duplicate=await c.env.DB.prepare("SELECT id,status FROM manual_payments WHERE lower(trim(utr_ref))=lower(?1) AND status IN ('pending','approved') LIMIT 1").bind(utr).first<{id:number;status:string}>();if(duplicate)return err(c,409,"DUPLICATE_UTR",{paymentId:duplicate.id,status:duplicate.status});}
  const now=Math.floor(Date.now()/1000);
- const r=await c.env.DB.prepare("INSERT INTO manual_payments(user_id,method_id,method_name,amount_inr,utr_ref,status,created_at) VALUES(?1,?2,?3,?4,?5,'pending',?6) RETURNING id").bind(c.get("user").id,b.method_id,method.name,b.amount_inr,b.utr_ref?.slice(0,120)??null,now).first<{id:number}>();
+ const r=await c.env.DB.prepare("INSERT INTO manual_payments(user_id,method_id,method_name,amount_inr,utr_ref,status,created_at) VALUES(?1,?2,?3,?4,?5,'pending',?6) RETURNING id").bind(c.get("user").id,b.method_id,method.name,b.amount_inr,utr||null,now).first<{id:number}>();
  if(!r?.id)return err(c,500,"PAYMENT_CREATE_FAILED");
  const bytes=Uint8Array.from(atob(match[2]),ch=>ch.charCodeAt(0));
  const mime="image/"+(match[1]==="jpeg"?"jpeg":match[1]);
