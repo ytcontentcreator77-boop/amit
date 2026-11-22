@@ -1120,24 +1120,47 @@ admin.post("/backup/send", async (c) => {
   const b=await readBody<{scope?:BackupScope}>(c);
   const scope=(b?.scope||"full") as BackupScope;
   if (!["full","key-catalog","users"].includes(scope)) return err(c,400,"INVALID_BACKUP_SCOPE");
-  const data=await buildBackup(c.env.DB,scope);
-  const json=JSON.stringify(data,null,2);
-  const filename="hero-bot-"+scope+"-backup-"+new Date().toISOString().slice(0,10)+".json";
   const admins=ownerIds(c.env,c.get("settings"));
   if(!admins.length) return err(c,409,"NO_ADMIN_CHAT_CONFIGURED");
-  let sent=0;
-  for(const adminId of admins){
-    const form=new FormData();
-    form.set("chat_id",String(adminId));
-    form.set("caption", "🔐 "+scope.toUpperCase()+" DATABASE BACKUP\\nTables: "+Object.keys(data.tables).length+"\\nRecords: "+Object.values(data.tables).reduce((n,v)=>n+v.length,0)+"\\nCreated: "+data.exportedAt+"\\nPrivate admin backup — do not share.");
-    form.set("document",new Blob([json],{type:"application/json"}),filename);
-    const response=await fetch("https://api.telegram.org/bot"+c.env.BOT_TOKEN+"/sendDocument",{method:"POST",body:form});
-    const result=await response.json() as any;
-    if(result?.ok) sent++;
-    else console.error("admin backup delivery failed",adminId,result?.description||response.status);
+  try {
+    const data=await buildBackup(c.env.DB,scope);
+    const json=JSON.stringify(data);
+    const raw=new TextEncoder().encode(json);
+    let payload:Uint8Array=raw;
+    let filename="hero-bot-"+scope+"-backup-"+new Date().toISOString().slice(0,10)+".json";
+    let mime="application/json";
+    // Telegram's document upload limit is 50 MB. Compress large database exports
+    // before sending; the admin import screen supports .json.gz as well.
+    if(raw.byteLength>15*1024*1024 && typeof CompressionStream!=="undefined") {
+      const stream=new Blob([raw]).stream().pipeThrough(new CompressionStream("gzip"));
+      payload=new Uint8Array(await new Response(stream).arrayBuffer());
+      filename+=".gz";
+      mime="application/gzip";
+    }
+    if(payload.byteLength>49*1024*1024) return err(c,413,"BACKUP_TOO_LARGE",{bytes:payload.byteLength,maxBytes:49*1024*1024});
+    const caption="🔐 "+scope.toUpperCase()+" DATABASE BACKUP\nTables: "+Object.keys(data.tables).length+"\nRecords: "+Object.values(data.tables).reduce((n,v)=>n+v.length,0)+"\nCreated: "+data.exportedAt+"\nPrivate admin backup — do not share.";
+    let sent=0;
+    const failures:string[]=[];
+    for(const adminId of admins) {
+      try {
+        const form=new FormData();
+        form.set("chat_id",String(adminId));
+        form.set("caption",caption);
+        form.set("document",new Blob([payload],{type:mime}),filename);
+        const response=await fetch("https://api.telegram.org/bot"+c.env.BOT_TOKEN+"/sendDocument",{method:"POST",body:form});
+        const result=await response.json().catch(()=>null) as any;
+        if(response.ok && result?.ok) sent++;
+        else failures.push(String(adminId)+": "+String(result?.description||("Telegram HTTP "+response.status)).slice(0,180));
+      } catch(e) {
+        failures.push(String(adminId)+": "+String((e as Error).message||e).slice(0,180));
+      }
+    }
+    if(!sent) return err(c,502,"BACKUP_DELIVERY_FAILED",{failures, hint:"Each receiving admin must open the bot and press /start before the bot can send private files."});
+    return c.json({ok:true,sent,admins:admins.length,failures,scope,filename,compressed:filename.endsWith(".gz"),bytes:payload.byteLength,tables:Object.keys(data.tables).length,records:Object.values(data.tables).reduce((n,v)=>n+v.length,0)});
+  } catch(e) {
+    console.error("admin backup send failed",e);
+    return err(c,500,"BACKUP_SEND_FAILED",{message:String((e as Error).message||e).slice(0,240)});
   }
-  if(!sent) return err(c,502,"BACKUP_DELIVERY_FAILED");
-  return c.json({ok:true,sent,admins:admins.length,scope,filename,tables:Object.keys(data.tables).length,records:Object.values(data.tables).reduce((n,v)=>n+v.length,0)});
 });
 admin.post("/backup/import", async (c) => {
   const b = await readBody<any>(c);
