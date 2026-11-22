@@ -110,7 +110,7 @@ export function AdminBackup(){
   <Section header="Export backup">
    <label>Backup type<select value={scope} onChange={e=>S((e.target as HTMLSelectElement).value as BackupScope)}><option value="full">Full database · all data</option><option value="key-catalog">Key categories & platforms only</option><option value="users">Users only</option></select></label>
    <Notice tone="info">{scope==="full"?"Includes users, balances, orders, keys and stock, products, categories, platforms, payment records, settings and provider configuration.":scope==="key-catalog"?"Includes only key-store categories and platforms. Does not include products, plans or stock.":"Exports only user profiles and account fields."}</Notice>
-   <button class="admin-extra-primary" disabled={busy} onClick={()=>void exportNow()}>{busy?"Preparing…":"Export "+label}</button>
+   <button class="admin-extra-primary" disabled={busy} onClick={()=>void exportNow()}>{busy?"Preparing…":"Export "+label}</button>\n   <button disabled={busy} onClick={()=>{B(true);void call("/admin/backup/send","POST",{scope}).then(r=>toast("Backup sent to "+r.sent+" admin chat(s) · "+r.records+" records","ok")).catch(e=>toast(e instanceof Error?e.message:"Could not send backup to admin","error")).finally(()=>B(false))}}>Send backup file to admin Telegram</button>
   </Section>
   <Section header="Import / restore">
    <label>Choose backup JSON file<input id="admin-backup-file" type="file" accept=".json,application/json" onChange={e=>void choose(e)}/></label>
