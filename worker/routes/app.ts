@@ -531,6 +531,9 @@ app.get("/keys/:id/setup-video",async(c)=>{
   if(!upstream.ok&&upstream.status!==206)return err(c,502,"VIDEO_DOWNLOAD_FAILED");
   const headers=new Headers();
   for(const key of ["content-type","content-length","content-range","accept-ranges"]){const value=upstream.headers.get(key);if(value)headers.set(key,value);}
+  // Some Telegram file responses omit a useful media type; browsers need this to initialize playback.
+  if(!headers.has("content-type"))headers.set("content-type","video/mp4");
+  headers.set("accept-ranges","bytes");
   headers.set("cache-control","private, max-age=300");
   return new Response(upstream.body,{status:upstream.status,headers});
  }catch{return err(c,502,"VIDEO_DOWNLOAD_FAILED");}
