@@ -40,9 +40,44 @@ bot.post("/", async (c) => {
   return c.text("ok");
 });
 
+const ADMIN_GUIDES = [
+  { title: "🚀 1/9 · Getting started & admin access", body: "🚀 <b>GETTING STARTED</b>\n\n1. Open your bot and send /start once. Telegram bots cannot privately message you until you start them.\n2. Send /admin to receive the secure Mini App admin-panel link.\n3. If you are the first owner, complete the first-admin claim using the private setup claim link or /claim CODE.\n4. Keep your Telegram account private and only add trusted owner IDs in the admin settings.\n\n<b>Useful commands</b>\n/admin — open admin panel\n/adminhelp — this guide\n/stats — sales and user statistics\n/preview — preview bot messages" },
+  { title: "🛍️ 2/9 · Products, plans & pricing", body: "🛍️ <b>PRODUCTS, PLANS & PRICING</b>\n\n1. Open /admin and go to the Products / Key products area.\n2. Create or edit a product: set its name, description, image and enabled status.\n3. Add plans/durations and set the selling price for each plan.\n4. Check the product is enabled and visible in the store.\n5. Review the customer-facing product page before announcing it.\n\nTip: use the product ID shown in Key products & stock for stock and setup-video commands; use the product UID shown in Products for delivery-asset uploads." },
+  { title: "🔑 3/9 · Stock, keys & order delivery", body: "🔑 <b>STOCK, KEYS & DELIVERY</b>\n\n<b>Add keys by command</b>\n/addkey PRODUCT_ID | PLAN_ID — start the import flow. You can also send a text key file with caption /addkey PRODUCT_ID | PLAN_ID. Duplicate keys are skipped.\n\n<b>Check stock</b>\n/stock — shows remaining key stock by product and plan.\n\n<b>Delivery files</b>\nSend a document with caption /upload PRODUCT_ID to attach a setup file. For the product delivery-assets flow, use /upload PRODUCT_UID as instructed in the admin panel.\n\nAfter adding stock, verify the correct product and plan stock before testing a purchase." },
+  { title: "🎬 4/9 · Setup videos & files", body: "🎬 <b>SETUP VIDEOS & FILES</b>\n\n1. Open Key products & stock and note the product ID.\n2. To attach a Telegram video, send the video with caption /addv PRODUCT_ID, or reply to a video with that command. This stores Telegram's file ID for reliable sending.\n3. To use a public direct video URL, send /addv PRODUCT_ID https://your-direct-video.mp4. The URL must be publicly reachable; webpage links may not be accepted as video media.\n4. A customer can open the Setup Video button from their delivered key or use the product deep link.\n5. Attach APK/documents separately with /upload PRODUCT_ID.\n\nIf a video does not play, upload the original video to Telegram using /addv PRODUCT_ID rather than a private or expiring URL." },
+  { title: "💰 5/9 · Wallet, Add Funds & payment review", body: "💰 <b>WALLET & PAYMENTS</b>\n\n1. Open /admin → payment / Add Funds settings to configure the payment methods shown in the Mini App.\n2. Check UPI/payment provider credentials and enable only methods you have tested.\n3. For manual payments, review pending requests and compare the UTR/reference and uploaded proof before approving or rejecting.\n4. Never approve a payment based only on a screenshot; verify the transaction in your payment account.\n5. Use payment/order records in the admin panel to investigate wallet credits and refunds.\n\nCustomers can use /wallet to check their balance. /paysupport opens payment help." },
+  { title: "👥 6/9 · Users, access & support", body: "👥 <b>USERS & ACCESS</b>\n\n1. Use the Users section in /admin to find a customer by Telegram ID and review their account.\n2. To add an existing Telegram user to your user list, use the admin Users tools; the user must have started the bot at least once so Telegram can message them.\n3. Admin access is owner-only. Add only trusted Telegram IDs and remove access when no longer needed.\n4. Ask customers for their Telegram ID, order reference and payment reference when investigating an issue.\n5. Use /stats for a quick overview and the admin panel for detailed records." },
+  { title: "📣 7/9 · Broadcasts, coupons & bonuses", body: "📣 <b>GROWTH & PROMOTIONS</b>\n\n<b>Broadcast</b>\n/broadcast — start the guided broadcast flow. Follow its prompts and preview carefully before confirming a send.\n\n<b>Coupons</b>\nOpen the Coupons section in /admin to create, configure, enable or disable coupons. Check value, usage limits and expiry before sharing a code.\n\n<b>Bonus</b>\n/bonus_settings — view current bonus configuration. Manage bonus enablement, reward mode, amount/range and cooldown in the admin settings.\n\nSend a test announcement to yourself before a large campaign." },
+  { title: "🗄️ 8/9 · Backup, restore & exports", body: "🗄️ <b>BACKUP & RESTORE</b>\n\n1. Open /admin → Backup / Data tools.\n2. Choose Send backup to deliver a backup file to configured owners only. Each owner must have opened the bot with /start first.\n3. Save downloaded backup files somewhere private and secure. They can contain customer and business data.\n4. To restore, use the Import / Restore file control and upload the supported JSON backup (or .json.gz when compressed backups are enabled).\n5. Confirm the target environment and review the import result before allowing customers to use the store.\n\nNever share backup files in public groups or with untrusted people. Keep a second copy before restoring." },
+  { title: "⚙️ 9/9 · Settings, checks & troubleshooting", body: "⚙️ <b>SETTINGS & TROUBLESHOOTING</b>\n\n1. Use the admin Settings sections to configure branding, bot details, channels, payment providers, language and store behaviour.\n2. Use /apicheck to check connected reseller API balance/status.\n3. Use /preview to send sample bot messages; /preview LANGUAGE_CODE selects a language.\n4. If commands do not appear, send /start in the bot chat; admin command menus are refreshed after a deployment.\n5. If the bot cannot send you a backup or alert, open the bot and send /start first.\n6. If a product is missing, confirm it is enabled, has an active plan and has stock or a working delivery provider.\n7. If payment is pending, verify it with the payment provider before manually changing customer balance.\n\n<b>Need a guide page?</b> Use /adminhelp or the buttons below to move between topics." }
+];
+
+async function showAdminGuide(env: Env, chatId: number, page: number, messageId?: number): Promise<void> {
+  const index = Math.max(0, Math.min(ADMIN_GUIDES.length - 1, page));
+  const guide = ADMIN_GUIDES[index];
+  const rows: any[][] = [];
+  const nav: any[] = [];
+  if (index > 0) nav.push({ text: "⬅️ Previous", callback_data: "ah:" + (index - 1) });
+  nav.push({ text: (index + 1) + " / " + ADMIN_GUIDES.length, callback_data: "ah:" + index });
+  if (index < ADMIN_GUIDES.length - 1) nav.push({ text: "Next ➡️", callback_data: "ah:" + (index + 1) });
+  rows.push(nav);
+  rows.push([{ text: "📚 Guide index", callback_data: "ah:0" }, { text: "🛠 Open admin panel", callback_data: "ah:panel" }]);
+  const payload: any = { chat_id: chatId, text: "<b>" + guide.title + "</b>\n\n" + guide.body + "\n\n<i>Admin guide · Page " + (index + 1) + " of " + ADMIN_GUIDES.length + "</i>", parse_mode: "HTML", reply_markup: { inline_keyboard: rows }, link_preview_options: { is_disabled: true } };
+  if (messageId) { payload.message_id = messageId; await tg(env.BOT_TOKEN, "editMessageText", payload); }
+  else await tg(env.BOT_TOKEN, "sendMessage", payload);
+}
+
 /** Language buttons → save the choice (shared with the Mini App) and show the welcome in that language. */
 async function onCallback(env: Env, q: any): Promise<void> {
   if (typeof q.data === "string" && q.data.startsWith("bc:")) return onBroadcastCallback(env, q);
+  if (typeof q.data === "string" && q.data.startsWith("ah:")) {
+    if (!isOwner(env, await getSettings(env), Number(q.from?.id))) return void (await tg(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: q.id, text: "Admin access required.", show_alert: true }));
+    if (q.data === "ah:panel") { await tg(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: q.id }); return void (await sendAdminLink(env, Number(q.from.id))); }
+    const page = Number(q.data.slice(3));
+    await tg(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: q.id });
+    if (Number.isInteger(page) && q.message?.message_id) await showAdminGuide(env, Number(q.from.id), page, q.message.message_id);
+    return;
+  }
   const upi = /^upi:(verify|cancel):(UPI[0-9A-Z]+)$/.exec(q.data ?? "");
   if (upi) {
     const action = upi[1], orderId = upi[2], uid = Number(q.from.id);
@@ -228,6 +263,7 @@ async function handle(env: Env, u: any): Promise<void> {
 
   // First-admin claim: "/start claim_<code>" (the setup link) or "/claim <code>". Wrong codes look like any other message.
   const arg = text.split(/\s+/)[1] ?? "";
+  if (cmd === "adminhelp" && isOwner(env, await getSettings(env), from.id)) return void (await showAdminGuide(env, from.id, Number(arg) > 0 ? Number(arg) - 1 : 0));
   if(cmd==="addv"&&isOwner(env,await getSettings(env),from.id)){
     const parts=text.split(/\s+/);const productId=Number(parts[1]);const videoUrl=parts.slice(2).join(" ").trim();
     if(!Number.isSafeInteger(productId)||productId<1)return void(await send("Use <code>/addv PRODUCT_ID https://video-link</code>, or send/reply to a video with caption <code>/addv PRODUCT_ID</code>."));
