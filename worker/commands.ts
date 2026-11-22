@@ -14,7 +14,7 @@ import { getSettings, setSettings, type Settings } from "./settings";
 import { tg } from "./telegram";
 
 /** Bump when the command lists change, so every deployment refreshes its menus after updating */
-export const COMMANDS_VERSION = 7;
+export const COMMANDS_VERSION = 8;
 
 type Command = { command: string; description: string };
 
@@ -32,6 +32,7 @@ export function userCommands(lang: Lang): Command[] {
 
 export const ADMIN_COMMANDS: Command[] = [
   { command: "admin", description: "Admin panel" },
+  { command: "adminhelp", description: "All admin guides, step by step" },
   { command: "stats", description: "Sales and user statistics" },
   { command: "addkey", description: "Import keys into product stock" },
   { command: "upload", description: "Attach an APK or setup file to a product" },
