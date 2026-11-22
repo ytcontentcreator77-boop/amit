@@ -161,6 +161,27 @@ const dropRow = (env: Env, admin: number) => env.DB.prepare("DELETE FROM broadca
 
 const audience = async (env: Env) =>
   (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE can_message = 1 AND banned = 0").first<{ n: number }>())?.n ?? 0;
+/** Per-recipient referral and calendar variables shared by previews and live broadcasts. */
+async function extraPersonalization(env: Env, userId: number): Promise<Record<string,string>> {
+  const [counts, people] = await env.DB.batch([
+    env.DB.prepare("SELECT COUNT(*) AS total,SUM(CASE WHEN status='rewarded' THEN 1 ELSE 0 END) AS rewarded,SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) AS pending FROM referrals WHERE referrer_id=?1").bind(userId),
+    env.DB.prepare("SELECT u.first_name,u.last_name FROM referrals r JOIN users u ON u.id=r.referred_id WHERE r.referrer_id=?1 ORDER BY r.created_at ASC LIMIT 100").bind(userId),
+  ]);
+  const stats:any=counts.results[0]||{};
+  const peopleRows:any[]=people.results as any[];
+  const names=peopleRows.map(x=>[x.first_name,x.last_name].filter(Boolean).join(" ").trim()).filter(Boolean);
+  const first=names[0]||"";
+  const second=names[1]||"";
+  const now=new Date();
+  return {
+    referrals:String(stats.total||0), referral_count:String(stats.total||0),
+    refferuser1:first, referral_user1:first, refferuser2:second, referral_user2:second,
+    yourallrefeers:names.join(", "), all_referrals:names.join(", "),
+    referral_rewarded:String(stats.rewarded||0), referral_pending:String(stats.pending||0),
+    today:now.toISOString().slice(0,10), year:String(now.getUTCFullYear()),
+  };
+}
+
 
 // ---------------------------------------------------------------------------------------------------------------
 // Database: the running broadcast
@@ -421,7 +442,8 @@ async function handleCallback(env: Env, s: Settings, q: Q & Required<Pick<Q, "me
         env.DB.prepare("SELECT delivered_key,product_name,expires_at FROM orders WHERE user_id=?1 AND delivered_key IS NOT NULL ORDER BY id DESC LIMIT 3").bind(admin),
       ]);
       const ks:any[]=latest.results as any[];const ct:any=counts.results[0]||{};
-      const vars={name:q.from.first_name?.trim()||"there",username:u?.username?`@${u.username}`:(q.from.first_name||"there"),balance:`₹${Number(u?.balance_inr||0).toFixed(2)}`,totalkeys:String(ct.totalkeys||0),key_1:ks[0]?.delivered_key||"",key_2:ks[1]?.delivered_key||"",key_3:ks[2]?.delivered_key||"",product:ks[0]?.product_name||"",expiry:ks[0]?.expires_at?new Date(Number(ks[0].expires_at)*1000).toLocaleDateString("en-GB"):"",joined:u?.created_at?new Date(Number(u.created_at)*1000).toLocaleDateString("en-GB"):"",orders:String(ct.orders||0),brand:brandName(s),support:s.support_username?`@${s.support_username}`:"Support"};
+      const joinedDays=u?.created_at?String(Math.max(0,Math.floor((Date.now()/1000-Number(u.created_at))/86400))):"0";
+      const vars={name:[q.from.first_name,u?.last_name].filter(Boolean).join(" ").trim()||"there",first_name:q.from.first_name?.trim()||"",last_name:u?.last_name||"",user_id:String(admin),id:String(admin),username:u?.username?`@${u.username}`:(q.from.first_name||"there"),balance:`₹${Number(u?.balance_inr||0).toFixed(2)}`,wallet_balance:`₹${Number(u?.balance_inr||0).toFixed(2)}`,totalkeys:String(ct.totalkeys||0),total_keys:String(ct.totalkeys||0),key_1:ks[0]?.delivered_key||"",key_2:ks[1]?.delivered_key||"",key_3:ks[2]?.delivered_key||"",product:ks[0]?.product_name||"",expiry:ks[0]?.expires_at?new Date(Number(ks[0].expires_at)*1000).toLocaleDateString("en-GB"):"",joined:u?.created_at?new Date(Number(u.created_at)*1000).toLocaleDateString("en-GB"):"",joined_days:joinedDays,orders:String(ct.orders||0),total_orders:String(ct.orders||0),brand:brandName(s),support:s.support_username?`@${s.support_username.replace(/^@/,"")}`:"Support",...(await extraPersonalization(env,admin))};
       const r = messageRequest(draft.c, vars, buildKeyboard(draft.b, draft.two, s.app_url, open));
       try {
         await tg(env.BOT_TOKEN, r.method, { chat_id: admin, ...r.params });
@@ -518,13 +540,16 @@ async function sendOne(env: Env, b: BroadcastState, s: Settings, u: Target, plai
   const open = b.app === false ? null : openButton(pickLang(u.lang ?? u.language_code), s);
   const {results: latest} = await env.DB.prepare(`SELECT delivered_key,product_name,expires_at,created_at FROM orders WHERE user_id=?1 AND delivered_key IS NOT NULL ORDER BY id DESC LIMIT 3`).bind(u.id).all<any>();
   const newest = latest[0];
+  const joinedDays=u.created_at?String(Math.max(0,Math.floor((Date.now()/1000-Number(u.created_at))/86400))):"0";
+  const balance=`₹${Number(u.balance_inr ?? 0).toFixed(2)}`;
   const vars: Record<string,string> = {
     name: [u.first_name,u.last_name].filter(Boolean).join(" ").trim() || "there", first_name: u.first_name?.trim() || "", last_name: u.last_name?.trim() || "", user_id: String(u.id), id: String(u.id), username: u.username ? `@${u.username}` : (u.first_name?.trim() || "there"),
-    balance: `₹${Number(u.balance_inr ?? 0).toFixed(2)}`, totalkeys: String(u.total_keys ?? 0),
+    balance, wallet_balance:balance, totalkeys: String(u.total_keys ?? 0), total_keys:String(u.total_keys??0),
     key_1: latest[0]?.delivered_key ?? "", key_2: latest[1]?.delivered_key ?? "", key_3: latest[2]?.delivered_key ?? "",
     product: newest?.product_name ?? "", expiry: newest?.expires_at ? new Date(Number(newest.expires_at)*1000).toLocaleDateString("en-GB") : "",
-    joined: u.created_at ? new Date(Number(u.created_at)*1000).toLocaleDateString("en-GB") : "",
-    orders: String(u.total_orders ?? 0), brand: brandName(s), support: s.support_username ? `@${s.support_username.replace(/^@/,"")}` : "Support",
+    joined: u.created_at ? new Date(Number(u.created_at)*1000).toLocaleDateString("en-GB") : "", joined_days:joinedDays,
+    orders: String(u.total_orders ?? 0), total_orders:String(u.total_orders??0), brand: brandName(s), support: s.support_username ? `@${s.support_username.replace(/^@/,"")}` : "Support",
+    ...(await extraPersonalization(env,u.id)),
   };
   const r = messageRequest(plainEmoji ? withoutCustomEmoji(b.c) : b.c, vars, buildKeyboard(b.b ?? [], !!b.two, s.app_url, open));
   await tg(env.BOT_TOKEN, r.method, { chat_id: u.id, ...r.params });
