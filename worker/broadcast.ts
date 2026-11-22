@@ -165,11 +165,11 @@ const audience = async (env: Env) =>
 async function extraPersonalization(env: Env, userId: number): Promise<Record<string,string>> {
   const [counts, people] = await env.DB.batch([
     env.DB.prepare("SELECT COUNT(*) AS total,SUM(CASE WHEN status='rewarded' THEN 1 ELSE 0 END) AS rewarded,SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) AS pending FROM referrals WHERE referrer_id=?1").bind(userId),
-    env.DB.prepare("SELECT u.first_name,u.last_name FROM referrals r JOIN users u ON u.id=r.referred_id WHERE r.referrer_id=?1 ORDER BY r.created_at ASC LIMIT 100").bind(userId),
+    env.DB.prepare("SELECT GROUP_CONCAT(trim(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ', ') AS names FROM referrals r JOIN users u ON u.id=r.referred_id WHERE r.referrer_id=?1").bind(userId),
   ]);
   const stats:any=counts.results[0]||{};
-  const peopleRows:any[]=people.results as any[];
-  const names=peopleRows.map(x=>[x.first_name,x.last_name].filter(Boolean).join(" ").trim()).filter(Boolean);
+  const allNames=String((people.results[0] as any)?.names||"");
+  const names=allNames?allNames.split(", "):[];
   const first=names[0]||"";
   const second=names[1]||"";
   const now=new Date();
