@@ -518,6 +518,23 @@ app.post("/wallet/topup-manual",async(c)=>{
  return c.json({ok:true,paymentId:r.id,status:"pending"},201);
 });
 app.get("/keys",async(c)=>{const {results}=await c.env.DB.prepare(`SELECT id,product_id,plan_id,product_name,plan_duration,delivered_key,key_source,price_inr,discount_inr,coupon_code,setup_file_url,expires_at,status,created_at FROM orders WHERE user_id=?1 AND delivered_key IS NOT NULL AND status='completed' ORDER BY id DESC LIMIT 100`).bind(c.get("user").id).all();return c.json({items:results});});
+app.get("/keys/:id/setup-video",async(c)=>{
+ const id=Number(c.req.param("id"));
+ if(!Number.isSafeInteger(id)||id<1)return err(c,400,"INVALID_ORDER");
+ const order=await c.env.DB.prepare("SELECT p.setup_video_file_id FROM orders o JOIN key_products p ON p.id=o.product_id WHERE o.id=?1 AND o.user_id=?2 AND o.delivered_key IS NOT NULL AND o.status='completed'").bind(id,c.get("user").id).first<{setup_video_file_id:string|null}>();
+ if(!order?.setup_video_file_id)return err(c,404,"VIDEO_NOT_FOUND");
+ try{
+  const file=await tg<any>(c.env.BOT_TOKEN,"getFile",{file_id:order.setup_video_file_id});
+  if(!file.file_path)return err(c,502,"VIDEO_FILE_UNAVAILABLE");
+  const range=c.req.header("range");
+  const upstream=await fetch("https://api.telegram.org/file/bot"+c.env.BOT_TOKEN+"/"+file.file_path,{headers:range?{range}:undefined});
+  if(!upstream.ok&&upstream.status!==206)return err(c,502,"VIDEO_DOWNLOAD_FAILED");
+  const headers=new Headers();
+  for(const key of ["content-type","content-length","content-range","accept-ranges"]){const value=upstream.headers.get(key);if(value)headers.set(key,value);}
+  headers.set("cache-control","private, max-age=300");
+  return new Response(upstream.body,{status:upstream.status,headers});
+ }catch{return err(c,502,"VIDEO_DOWNLOAD_FAILED");}
+});
 app.get("/keys/:id",async(c)=>{const r=await c.env.DB.prepare("SELECT o.id,o.product_id,o.plan_id,o.product_name,o.plan_duration,o.delivered_key,o.key_source,o.price_inr,o.discount_inr,o.coupon_code,o.setup_file_id,o.setup_file_url,o.expires_at,o.status,o.created_at,p.setup_video_file_id,p.setup_video_url FROM orders o LEFT JOIN key_products p ON p.id=o.product_id WHERE o.id=?1 AND o.user_id=?2 AND o.delivered_key IS NOT NULL AND o.status='completed'").bind(Number(c.req.param("id")),c.get("user").id).first();return r?c.json({...r,bot_username:c.get("settings").bot_username}):err(c,404,"NOT_FOUND");});
 app.post("/keys/validate-coupon",async(c)=>{const b=await readBody<{code:string;product_id:number;plan_id:number}>(c);if(!b||!b.code)return err(c,400,"INVALID_BODY");const now=Math.floor(Date.now()/1000),uid=c.get("user").id;const coupon=await c.env.DB.prepare("SELECT * FROM coupons WHERE code=?1 COLLATE NOCASE AND enabled=1 AND (expires_at IS NULL OR expires_at>?2) AND (max_uses=0 OR used_count<max_uses)").bind(b.code.trim(),now).first<any>();if(!coupon)return err(c,404,"COUPON_INVALID");if(coupon.type==="wallet_inr")return err(c,400,"USE_WALLET_REDEEM");const used=await c.env.DB.prepare("SELECT COUNT(*) AS n FROM coupon_uses WHERE coupon_id=?1 AND user_id=?2").bind(coupon.id,uid).first<{n:number}>();if(Number(used?.n??0)>=Number(coupon.per_user_limit))return err(c,409,"COUPON_LIMIT");const plan=await c.env.DB.prepare("SELECT price_inr FROM key_plans WHERE id=?1 AND product_id=?2 AND enabled=1").bind(b.plan_id,b.product_id).first<{price_inr:number}>();if(!plan)return err(c,404,"PLAN_NOT_FOUND");if(coupon.target_product_id&&Number(coupon.target_product_id)!==b.product_id)return err(c,400,"COUPON_NOT_FOR_PRODUCT");if(coupon.target_plan_id&&Number(coupon.target_plan_id)!==b.plan_id)return err(c,400,"COUPON_NOT_FOR_PLAN");let discount=0;if(coupon.type==="free_key")discount=Number(plan.price_inr);else if(["global_discount","panel_discount","next_x_orders"].includes(coupon.type))discount=coupon.discount_mode==="flat_inr"?Number(coupon.value):Number(plan.price_inr)*Math.min(100,Number(coupon.value))/100;return c.json({ok:true,code:coupon.code,type:coupon.type,discount:Math.min(Number(plan.price_inr),discount),price:Math.max(0,Number(plan.price_inr)-discount)});});
 app.post("/keys/buy",async(c)=>{
