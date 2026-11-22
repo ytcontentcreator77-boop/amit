@@ -844,7 +844,7 @@ admin.post("/key-products", async (c) => {
 admin.put("/key-products/:id", async (c) => {
   const id = Number(c.req.param("id")); const b = await readBody<any>(c);
   if (!Number.isSafeInteger(id) || id < 1 || !b) return err(c,400,"INVALID_BODY");
-  const allowed = ["name","pid","category","platform","description","image_url","api_id","api_source","enabled","sort","setup_file_id","setup_file_name","setup_file_url"];
+  const allowed = ["name","pid","category","platform","description","image_url","api_id","api_source","enabled","sort","setup_file_id","setup_file_name","setup_file_url","setup_video_file_id","setup_video_url"];
   const fields = allowed.filter(k => b[k] !== undefined);
   if (!fields.length) return c.json({ok:true});
   const sets = fields.map((k,i)=>`${k}=?${i+2}`).join(",");
