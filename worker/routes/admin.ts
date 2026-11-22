@@ -25,9 +25,68 @@ import { startAnnouncementBroadcast } from "../broadcast";
 export const admin = new Hono<AppEnv>();
 admin.route("/", providers);
 
+const STAFF_PERMISSIONS = ["dashboard.read","payments.read","payments.review","payments.refund","users.read","users.manage","orders.read","orders.manage","products.read","products.manage","providers.manage","reports.read","backup.manage","campaigns.manage","settings.manage"] as const;
+type StaffPermission = typeof STAFF_PERMISSIONS[number];
+function staffPermissionFor(method: string, path: string): StaffPermission | null {
+  const read = method === "GET" || method === "HEAD";
+  if (path.startsWith("/staff")) return null;
+  if (path.startsWith("/manual-payments")) return read ? "payments.read" : "payments.review";
+  if (path.startsWith("/payments")) return read ? "payments.read" : path.includes("/refund") ? "payments.refund" : "payments.review";
+  if (path.startsWith("/orders")) return read ? "orders.read" : "orders.manage";
+  if (path.startsWith("/users")) return read ? "users.read" : "users.manage";
+  if (path.startsWith("/key-products") || path.startsWith("/key-plans") || path.startsWith("/key-stock") || path.startsWith("/stock-summary") || path.startsWith("/key-orders")) return read ? "products.read" : "products.manage";
+  if (path.startsWith("/providers") || path.startsWith("/key-apis")) return "providers.manage";
+  if (path.startsWith("/backup")) return "backup.manage";
+  if (path.startsWith("/reports") || path.startsWith("/money")) return "reports.read";
+  if (path.startsWith("/campaigns") || path.startsWith("/coupons") || path.startsWith("/announcements")) return "campaigns.manage";
+  if (path.startsWith("/overview")) return "dashboard.read";
+  if (path.startsWith("/settings") || path.startsWith("/payment-methods") || path.startsWith("/messages") || path.startsWith("/branding") || path.startsWith("/owners")) return "settings.manage";
+  return null;
+}
+
 admin.use("*", async (c, next) => {
-  if (!isOwner(c.env, c.get("settings"), c.get("user").id)) return err(c, 403, "FORBIDDEN");
+  const uid = c.get("user").id;
+  const settings = c.get("settings");
+  if (isOwner(c.env, settings, uid)) return next();
+  const path = new URL(c.req.url).pathname.replace(/^\\/api\\/admin/, "") || "/";
+  if (path.startsWith("/staff")) return err(c, 403, "OWNER_ONLY");
+  const permission = staffPermissionFor(c.req.method, path);
+  if (!permission) return err(c, 403, "FORBIDDEN");
+  const member = await c.env.DB.prepare("SELECT permissions_json,active FROM staff_members WHERE user_id=?1").bind(uid).first<{permissions_json:string;active:number}>();
+  if (!member || !member.active) return err(c, 403, "FORBIDDEN");
+  let permissions: Record<string, boolean> = {};
+  try { permissions = JSON.parse(member.permissions_json || "{}"); } catch { /* deny malformed permissions */ }
+  if (!permissions[permission]) return err(c, 403, "STAFF_PERMISSION_REQUIRED", { permission });
   await next();
+});
+
+// Staff accounts are managed only by owners. Each staff member receives explicit, independently editable permissions.
+admin.get("/staff", async (c) => {
+  const {results}=await c.env.DB.prepare("SELECT s.user_id,s.display_name,s.permissions_json,s.active,s.created_at,u.username,u.first_name FROM staff_members s LEFT JOIN users u ON u.id=s.user_id ORDER BY s.created_at DESC").all<any>();
+  return c.json({items:results.map(x=>({...x,permissions:(()=>{try{return JSON.parse(x.permissions_json||"{}")}catch{return {}}})()})) , available:STAFF_PERMISSIONS});
+});
+admin.post("/staff", async (c) => {
+  const b=await readBody<{user_id?:number;permissions?:Record<string,unknown>;display_name?:string}>(c);
+  const id=Number(b?.user_id);
+  if(!Number.isSafeInteger(id)||id<=0)return err(c,400,"INVALID_USER_ID");
+  if(isOwner(c.env,c.get("settings"),id))return err(c,409,"OWNER_CANNOT_BE_STAFF");
+  const user=await c.env.DB.prepare("SELECT first_name FROM users WHERE id=?1").bind(id).first<{first_name:string}>();
+  if(!user)return err(c,404,"USER_NOT_FOUND");
+  const permissions:Record<string,boolean>={};
+  for(const key of STAFF_PERMISSIONS)permissions[key]=b?.permissions?.[key]===true;
+  if(!Object.values(permissions).some(Boolean))return err(c,400,"SELECT_AT_LEAST_ONE_PERMISSION");
+  const now=Math.floor(Date.now()/1000),actor=c.get("user").id,name=String(b?.display_name||user.first_name||"Staff").slice(0,80);
+  await c.env.DB.prepare("INSERT INTO staff_members(user_id,display_name,permissions_json,active,created_by,created_at,updated_at) VALUES(?1,?2,?3,1,?4,?5,?5) ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,permissions_json=excluded.permissions_json,active=1,updated_at=excluded.updated_at").bind(id,name,JSON.stringify(permissions),actor,now).run();
+  await c.env.DB.prepare("INSERT INTO admin_audit_logs(actor_id,action,target_type,target_id,details_json,created_at) VALUES(?1,'staff.upsert','staff',?2,?3,?4)").bind(actor,String(id),JSON.stringify({permissions}),now).run();
+  return c.json({ok:true,userId:id,permissions});
+});
+admin.delete("/staff/:id", async (c) => {
+  const id=Number(c.req.param("id"));if(!Number.isSafeInteger(id)||id<=0)return err(c,400,"INVALID_USER_ID");
+  const now=Math.floor(Date.now()/1000),actor=c.get("user").id;
+  const result=await c.env.DB.prepare("UPDATE staff_members SET active=0,updated_at=?2 WHERE user_id=?1 AND active=1").bind(id,now).run();
+  if(!result.meta.changes)return err(c,404,"STAFF_NOT_FOUND");
+  await c.env.DB.prepare("INSERT INTO admin_audit_logs(actor_id,action,target_type,target_id,created_at) VALUES(?1,'staff.deactivate','staff',?2,?3)").bind(actor,String(id),now).run();
+  return c.json({ok:true});
 });
 
 const dayStart = () => periodStart("today", Date.now());
