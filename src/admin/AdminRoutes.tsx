@@ -1338,10 +1338,33 @@ const fullName = (u: { id: number; first_name: string; last_name: string }) => `
 
 function AdminUsers() {
   const [q, setQ] = useState("");
+  const [telegramId, setTelegramId] = useState("");
+  const [adding, setAdding] = useState(false);
   const pg = usePaged<UserRow>(`/admin/users?q=${enc(q.trim())}`, q ? 300 : 0);
   const list = pg.items;
+  const addById = async () => {
+    const id = telegramId.trim();
+    if (!/^\\d{5,20}$/.test(id) || adding) { if (id) toast("Enter a valid Telegram user ID.", "error"); return; }
+    setAdding(true);
+    try {
+      const result = await api<{userId:number;alreadyRegistered:boolean}>("/admin/users/add-by-id", { body: { telegram_id: id } });
+      toast(result.alreadyRegistered ? "This user is already registered." : "User added successfully.", "ok");
+      setTelegramId("");
+      pg.reload();
+      navigate(`/admin/users/${result.userId}`);
+    } catch (e) { fail(e); }
+    finally { setAdding(false); }
+  };
   return (
     <Page back="/admin" title="Users">
+      <div class="card" style={{padding:"14px",marginBottom:"14px"}}>
+        <b>Add user by Telegram ID</b>
+        <p class="muted" style={{margin:"5px 0 10px"}}>Only users who have already opened this bot and pressed /start can be added.</p>
+        <div style={{display:"flex",gap:"8px"}}>
+          <input value={telegramId} onInput={e=>setTelegramId((e.currentTarget as HTMLInputElement).value)} inputMode="numeric" placeholder="Telegram user ID" style={{minWidth:0,flex:1}} />
+          <button disabled={adding || !telegramId.trim()} onClick={addById}>{adding ? "Checking…" : "Add user"}</button>
+        </div>
+      </div>
       <SearchField value={q} onInput={setQ} placeholder="Name, @username or Telegram ID" />
       {pg.err && !list ? (
         <ErrorState error={pg.err} onRetry={pg.reload} />
